@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}Årsöversikt {{ year }} – Flexblankett{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('main.overview', year=year-1) }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-chevron-left"></i> {{ year-1 }}
+        </a>
+        <a href="{{ url_for('main.overview', year=year+1) }}" class="btn btn-outline-secondary btn-sm">
+            {{ year+1 }} <i class="bi bi-chevron-right"></i>
+        </a>
+    </div>
+    <h3 class="mb-0">Årsöversikt {{ year }}</h3>
+    <div style="width:120px"></div>
+</div>
+
+<!-- Employee info -->
+<div class="main-card p-3 mb-3">
+    <div class="row g-2">
+        <div class="col-sm-3">
+            <span class="text-muted small">Namn</span><br>
+            <strong>{{ employee.name }}</strong>
+        </div>
+        <div class="col-sm-3">
+            <span class="text-muted small">Personnummer</span><br>
+            <strong>{{ employee.ssn or '–' }}</strong>
+        </div>
+        <div class="col-sm-3">
+            <span class="text-muted small">Tjänstegrad</span><br>
+            <strong>{{ (employee.service_degree * 100)|int }}%</strong>
+        </div>
+        <div class="col-sm-3">
+            <span class="text-muted small">Ingående flex {{ year }}</span><br>
+            <strong class="{% if employee.initial_flex_balance >= 0 %}saldo-pos{% else %}saldo-neg{% endif %}">
+                {{ employee.initial_flex_balance|float|round(2)|signed }} h
+            </strong>
+        </div>
+    </div>
+</div>
+
+<!-- Monthly summary table -->
+<div class="main-card overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Månad</th>
+                    <th class="text-end">Ref.tid</th>
+                    <th class="text-end">Närvaro</th>
+                    <th class="text-end">Avvikelse</th>
+                    <th class="text-end">Totalt</th>
+                    <th class="text-end">Månadssaldo</th>
+                    <th class="text-end">Ack. saldo</th>
+                    <th class="text-end text-muted">Poster</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for md in months_data %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('main.month_view', year=year, month=md.month) }}"
+                       class="text-decoration-none fw-semibold">
+                        {{ md.month_name }}
+                    </a>
+                </td>
+                {% if md.summary %}
+                <td class="text-end">{{ md.summary.reference_hours }} h</td>
+                <td class="text-end">{{ md.summary.total_presence }} h</td>
+                <td class="text-end {% if md.summary.total_deviation > 0 %}text-success{% elif md.summary.total_deviation < 0 %}text-danger{% endif %}">
+                    {% if md.summary.total_deviation != 0 %}{{ md.summary.total_deviation|signed }} h{% else %}–{% endif %}
+                </td>
+                <td class="text-end">{{ md.summary.total_hours }} h</td>
+                <td class="text-end {% if md.summary.monthly_saldo >= 0 %}saldo-pos{% else %}saldo-neg{% endif %}">
+                    {{ md.summary.monthly_saldo|signed }} h
+                </td>
+                <td class="text-end {% if md.summary.outgoing_flex >= 0 %}saldo-pos{% else %}saldo-neg{% endif %}">
+                    {{ md.summary.outgoing_flex|signed }} h
+                </td>
+                {% elif md.ref %}
+                <td class="text-end text-muted">
+                    {{ (md.ref.reference_hours * employee.service_degree|float)|round(1) }} h
+                </td>
+                <td class="text-muted text-end" colspan="5">Ingen data</td>
+                {% else %}
+                <td class="text-muted text-end" colspan="6">Ej konfigurerad</td>
+                {% endif %}
+                <td class="text-end text-muted small">{{ md.entry_count }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

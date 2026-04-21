@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Redigera' if action == 'edit' else 'Ny' }} användare – Flexblankett{% endblock %}
+
+{% macro field_val(field, default='') %}
+{%- if action == 'edit' and edit_user -%}
+  {%- if field == 'username' %}{{ edit_user.username }}
+  {%- elif field == 'email' %}{{ edit_user.email }}
+  {%- elif field == 'role' %}{{ edit_user.role }}
+  {%- elif field == 'name' %}{{ edit_user.employee.name if edit_user.employee else '' }}
+  {%- elif field == 'ssn' %}{{ edit_user.employee.ssn or '' if edit_user.employee else '' }}
+  {%- elif field == 'service_degree' %}{{ edit_user.employee.service_degree if edit_user.employee else 1.0 }}
+  {%- elif field == 'initial_flex_balance' %}{{ edit_user.employee.initial_flex_balance if edit_user.employee else 0 }}
+  {%- elif field == 'base_year' %}{{ edit_user.employee.base_year if edit_user.employee else 2026 }}
+  {%- else %}{{ default }}{%- endif %}
+{%- elif form_data %}{{ form_data.get(field, default) }}
+{%- else %}{{ default }}{%- endif %}
+{% endmacro %}
+
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-7">
+
+<div class="d-flex align-items-center gap-3 mb-3">
+    <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h3 class="mb-0">
+        {% if action == 'edit' %}Redigera – {{ edit_user.username }}{% else %}Ny användare{% endif %}
+    </h3>
+</div>
+
+<div class="main-card p-4">
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <h5 class="mb-3">Inloggningsuppgifter</h5>
+    <div class="row g-3 mb-3">
+        <div class="col-sm-6">
+            <label class="form-label fw-semibold">Användarnamn</label>
+            <input type="text" name="username" class="form-control"
+                   value="{{ field_val('username') }}" required autocomplete="off">
+        </div>
+        <div class="col-sm-6">
+            <label class="form-label fw-semibold">E-post</label>
+            <input type="email" name="email" class="form-control"
+                   value="{{ field_val('email') }}" required autocomplete="off">
+        </div>
+        <div class="col-sm-6">
+            <label class="form-label fw-semibold">
+                Lösenord{% if action == 'edit' %} <span class="text-muted fw-normal">(lämna tomt = oförändrat)</span>{% endif %}
+            </label>
+            <input type="password" name="password" class="form-control"
+                   {% if action == 'new' %}required{% endif %} autocomplete="new-password">
+        </div>
+        <div class="col-sm-6">
+            <label class="form-label fw-semibold">Roll</label>
+            <select name="role" class="form-select">
+                <option value="user" {% if field_val('role', 'user') == 'user' %}selected{% endif %}>Användare</option>
+                <option value="admin" {% if field_val('role', 'user') == 'admin' %}selected{% endif %}>Admin</option>
+            </select>
+        </div>
+        {% if action == 'edit' %}
+        <div class="col-12">
+            <div class="form-check">
+                <input type="checkbox" name="active" class="form-check-input" id="active"
+                       {% if edit_user.active %}checked{% endif %}>
+                <label class="form-check-label" for="active">Aktiv (kan logga in)</label>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <hr>
+    <h5 class="mb-3">Anställdprofil</h5>
+    <div class="row g-3">
+        <div class="col-sm-6">
+            <label class="form-label fw-semibold">Fullständigt namn</label>
+            <input type="text" name="name" class="form-control"
+                   value="{{ field_val('name') }}" required>
+        </div>
+        <div class="col-sm-6">
+            <label class="form-label fw-semibold">Personnummer <span class="text-muted fw-normal">(valfritt)</span></label>
+            <input type="text" name="ssn" class="form-control" placeholder="YYMMDD-XXXX"
+                   value="{{ field_val('ssn') }}">
+        </div>
+        <div class="col-sm-4">
+            <label class="form-label fw-semibold">Tjänstegrad</label>
+            <input type="number" name="service_degree" class="form-control"
+                   step="0.01" min="0.01" max="1"
+                   value="{{ field_val('service_degree', '1.0') }}" required>
+            <div class="form-text">1.0 = heltid, 0.5 = halvtid</div>
+        </div>
+        <div class="col-sm-4">
+            <label class="form-label fw-semibold">Ingående flexsaldo (h)</label>
+            <input type="number" name="initial_flex_balance" class="form-control"
+                   step="0.25" value="{{ field_val('initial_flex_balance', '0') }}" required>
+        </div>
+        <div class="col-sm-4">
+            <label class="form-label fw-semibold">Basår</label>
+            <input type="number" name="base_year" class="form-control"
+                   value="{{ field_val('base_year', '2026') }}" required>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between mt-4">
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg"></i> Spara
+            </button>
+            <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">Avbryt</a>
+        </div>
+        {% if action == 'edit' and edit_user.id != current_user.id %}
+        <form method="post" action="{{ url_for('admin.delete_user', user_id=edit_user.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-danger"
+                    onclick="return confirm('Ta bort {{ edit_user.username }}? All tiddata raderas.')">
+                <i class="bi bi-trash"></i> Ta bort användare
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</form>
+</div>
+</div>
+</div>
+{% endblock %}

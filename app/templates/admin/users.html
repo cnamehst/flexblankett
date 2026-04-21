@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Användare – Flexblankett{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0"><i class="bi bi-people"></i> Användare</h3>
+    <a href="{{ url_for('admin.new_user') }}" class="btn btn-primary">
+        <i class="bi bi-person-plus"></i> Ny användare
+    </a>
+</div>
+
+<div class="main-card overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Användarnamn</th>
+                    <th>Namn</th>
+                    <th>E-post</th>
+                    <th>Roll</th>
+                    <th class="text-end">Tj-grad</th>
+                    <th class="text-end">Ing. flex</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for u in users %}
+            <tr>
+                <td class="fw-semibold">{{ u.username }}</td>
+                <td>{{ u.employee.name if u.employee else '–' }}</td>
+                <td class="text-muted small">{{ u.email }}</td>
+                <td>
+                    {% if u.is_admin %}
+                    <span class="badge bg-warning text-dark">Admin</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Användare</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    {{ (u.employee.service_degree * 100)|int ~ '%' if u.employee else '–' }}
+                </td>
+                <td class="text-end {% if u.employee and u.employee.initial_flex_balance >= 0 %}saldo-pos{% else %}saldo-neg{% endif %}">
+                    {{ u.employee.initial_flex_balance|float|round(2)|signed ~ ' h' if u.employee else '–' }}
+                </td>
+                <td>
+                    {% if u.active %}
+                    <span class="badge bg-success">Aktiv</span>
+                    {% else %}
+                    <span class="badge bg-danger">Inaktiv</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <a href="{{ url_for('admin.edit_user', user_id=u.id) }}"
+                       class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not users %}
+            <tr><td colspan="8" class="text-center text-muted py-4">Inga användare.</td></tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
