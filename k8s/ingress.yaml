@@ -1,0 +1,27 @@
+# Change flex.cname.se to your actual hostname
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: flexblankett
+  namespace: flexblankett
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.middlewares: flexblankett-redirect-https@kubernetescrd
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - flex.cname.se
+      secretName: flexblankett-tls
+  rules:
+    - host: flex.cname.se
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: flexblankett
+                port:
+                  number: 80

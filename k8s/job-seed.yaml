@@ -1,0 +1,22 @@
+# Run once after first deploy: kubectl apply -f k8s/job-seed.yaml
+# Creates tables and seeds month reference data + admin user
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: flexblankett-seed
+  namespace: flexblankett
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      imagePullSecrets:
+        - name: gitea-registry
+      containers:
+        - name: seed
+          image: git.cname.se/hst/flexblankett:latest
+          command: ["python", "seed_data.py"]
+          envFrom:
+            - secretRef:
+                name: flexblankett-secret
+      restartPolicy: OnFailure
+  backoffLimit: 5
