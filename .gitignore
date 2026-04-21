@@ -9,3 +9,4 @@ venv/
 *.sqlite3
 instance/
 .claude/
+k8s/secret.yaml

@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flexblankett
+  namespace: flexblankett
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flexblankett
+  template:
+    metadata:
+      labels:
+        app: flexblankett
+    spec:
+      imagePullSecrets:
+        - name: gitea-registry
+      containers:
+        - name: flexblankett
+          image: git.cname.se/hst/flexblankett:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
+          envFrom:
+            - secretRef:
+                name: flexblankett-secret
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /login
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /login
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 20
