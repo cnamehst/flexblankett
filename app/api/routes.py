@@ -61,6 +61,7 @@ def _entry_to_dict(entry):
         'adj_to': entry.adj_to.strftime('%H:%M') if entry.adj_to else None,
         'adj_sign': entry.adj_sign,
         'notes': entry.notes,
+        'day_norm_hours': float(entry.day_norm_hours) if entry.day_norm_hours else None,
     }
 
 
@@ -205,6 +206,10 @@ def save_entry():
     adj_sign = data.get('adj_sign', '')
     entry.adj_sign = adj_sign if adj_sign in ('+', '-') else None
     entry.notes = data.get('notes') or None
+    try:
+        entry.day_norm_hours = float(data['day_norm_hours']) if data.get('day_norm_hours') else None
+    except (ValueError, TypeError):
+        entry.day_norm_hours = None
 
     db.session.commit()
 
