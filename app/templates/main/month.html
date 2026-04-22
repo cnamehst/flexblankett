@@ -213,13 +213,11 @@
                     </div>
                 </div>
                 <div class="modal-footer justify-content-between">
-                    <form method="post" id="deleteForm" style="display:none;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-outline-danger btn-sm"
-                                onclick="return confirm('Ta bort denna post?')">
-                            <i class="bi bi-trash"></i> Ta bort
-                        </button>
-                    </form>
+                    <button type="submit" form="deleteForm" id="deleteBtn" style="display:none;"
+                            class="btn btn-outline-danger btn-sm"
+                            onclick="return confirm('Ta bort denna post?')">
+                        <i class="bi bi-trash"></i> Ta bort
+                    </button>
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Avbryt</button>
                         <button type="submit" class="btn btn-primary" form="entryForm">
@@ -227,6 +225,9 @@
                         </button>
                     </div>
                 </div>
+            </form>
+            <form method="post" id="deleteForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             </form>
         </div>
     </div>
@@ -260,12 +261,13 @@ modal.addEventListener('show.bs.modal', function(event) {
     document.getElementById('adj_sign').value = d.adjSign || '';
     document.getElementById('notes').value = d.notes || '';
 
+    const deleteBtn = document.getElementById('deleteBtn');
     const deleteForm = document.getElementById('deleteForm');
     if (d.entryId) {
-        deleteForm.style.display = 'block';
+        deleteBtn.style.display = 'block';
         deleteForm.action = '/entry/' + d.entryId + '/delete';
     } else {
-        deleteForm.style.display = 'none';
+        deleteBtn.style.display = 'none';
     }
 });
 </script>
