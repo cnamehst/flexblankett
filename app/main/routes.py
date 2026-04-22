@@ -1,4 +1,6 @@
 import calendar
+import csv
+import io
 from datetime import date, time
 from flask import render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
@@ -176,6 +178,75 @@ def delete_entry(entry_id):
     db.session.commit()
     flash('Borttagen.', 'success')
     return redirect(url_for('main.month_view', year=year, month=month))
+
+
+@bp.route('/import', methods=['GET', 'POST'])
+@login_required
+def import_entries():
+    employee = _get_employee()
+    if not employee:
+        return redirect(url_for('main.index'))
+
+    if request.method == 'GET':
+        return render_template('main/import.html')
+
+    csv_text = request.form.get('csv_data', '').strip()
+    if not csv_text:
+        flash('Ingen data att importera.', 'warning')
+        return render_template('main/import.html')
+
+    created = updated = skipped = errors = 0
+    overwrite = request.form.get('overwrite') == '1'
+
+    reader = csv.reader(io.StringIO(csv_text))
+    for lineno, row in enumerate(reader, start=1):
+        if not row or row[0].strip().lower() in ('datum', 'date', ''):
+            continue
+        if len(row) < 3:
+            errors += 1
+            continue
+        try:
+            entry_date = date.fromisoformat(row[0].strip())
+        except ValueError:
+            errors += 1
+            continue
+
+        def parse_col(val):
+            val = val.strip()
+            if not val:
+                return None
+            try:
+                parts = val.split(':')
+                return time(int(parts[0]), int(parts[1]))
+            except (ValueError, IndexError):
+                return None
+
+        start = parse_col(row[1])
+        end = parse_col(row[2])
+        comment = row[3].strip() if len(row) > 3 else None
+
+        existing = TimeEntry.query.filter_by(
+            employee_id=employee.id, entry_date=entry_date
+        ).first()
+
+        if existing and not overwrite:
+            skipped += 1
+            continue
+
+        entry = existing or TimeEntry(employee_id=employee.id, entry_date=entry_date)
+        if not existing:
+            db.session.add(entry)
+            created += 1
+        else:
+            updated += 1
+
+        entry.start_time = start
+        entry.end_time = end
+        entry.comment = comment or None
+
+    db.session.commit()
+    flash(f'Import klar: {created} skapade, {updated} uppdaterade, {skipped} hoppade över, {errors} fel.', 'success')
+    return render_template('main/import.html')
 
 
 @bp.route('/overview/<int:year>')
