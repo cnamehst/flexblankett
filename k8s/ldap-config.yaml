@@ -8,6 +8,13 @@ data:
   LDAP_HOST: "ipa.cname.se"
   LDAP_BASE_DN: "dc=cname,dc=se"
   LDAP_CA_CERT: "/etc/ssl/certs/ipa-ca.pem"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flexblankett-ipa-ca
+  namespace: flexblankett
+data:
   ipa-ca.pem: |
     -----BEGIN CERTIFICATE-----
     MIIEgjCCAuqgAwIBAgIBATANBgkqhkiG9w0BAQsFADAzMREwDwYDVQQKDAhDTkFN

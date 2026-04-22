@@ -14,10 +14,7 @@ from app.calculations import (
 
 
 def _get_employee():
-    emp = current_user.employee
-    if not emp:
-        flash('Ingen anställdprofil. Kontakta admin.', 'warning')
-    return emp
+    return current_user.employee
 
 
 def _get_incoming_flex(employee, year, month):
@@ -50,6 +47,12 @@ def _parse_time(field):
         return None
 
 
+@bp.route('/no-profile')
+@login_required
+def no_profile():
+    return render_template('main/no_profile.html')
+
+
 @bp.route('/')
 @login_required
 def index():
@@ -65,7 +68,7 @@ def month_view(year, month):
 
     employee = _get_employee()
     if not employee:
-        return redirect(url_for('main.index'))
+        return redirect(url_for('main.no_profile'))
 
     _, days_in_month = calendar.monthrange(year, month)
     start_date = date(year, month, 1)
@@ -125,7 +128,7 @@ def month_view(year, month):
 def save_entry():
     employee = _get_employee()
     if not employee:
-        return redirect(url_for('main.index'))
+        return redirect(url_for('main.no_profile'))
 
     entry_id = request.form.get('entry_id', type=int)
     try:
@@ -171,7 +174,7 @@ def save_entry():
 def delete_entry(entry_id):
     employee = _get_employee()
     if not employee:
-        return redirect(url_for('main.index'))
+        return redirect(url_for('main.no_profile'))
 
     entry = db.session.get(TimeEntry, entry_id)
     if not entry or entry.employee_id != employee.id:
@@ -190,7 +193,7 @@ def delete_entry(entry_id):
 def import_entries():
     employee = _get_employee()
     if not employee:
-        return redirect(url_for('main.index'))
+        return redirect(url_for('main.no_profile'))
 
     if request.method == 'GET':
         return render_template('main/import.html')
@@ -296,7 +299,7 @@ def revoke_api_key(key_id):
 def overview(year):
     employee = _get_employee()
     if not employee:
-        return redirect(url_for('main.index'))
+        return redirect(url_for('main.no_profile'))
 
     months_data = []
     balance = float(employee.initial_flex_balance)
