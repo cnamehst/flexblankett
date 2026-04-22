@@ -4,28 +4,20 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Log in to registry
-        uses: docker/login-action@v3
-        with:
-          registry: git.cname.se
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
+        run: git clone https://oauth2:${{ github.token }}@git.cname.se/${{ github.repository }}.git .
 
       - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
-            git.cname.se/hst/flexblankett:latest
-            git.cname.se/hst/flexblankett:${{ github.sha }}
+        run: |
+          echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login git.cname.se -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+          docker build \
+            -t git.cname.se/hst/flexblankett:latest \
+            -t git.cname.se/hst/flexblankett:${{ github.sha }} \
+            .
+          docker push git.cname.se/hst/flexblankett:latest
+          docker push git.cname.se/hst/flexblankett:${{ github.sha }}
