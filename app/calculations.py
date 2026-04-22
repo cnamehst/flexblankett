@@ -27,7 +27,8 @@ def calc_entry(entry, service_degree: float) -> dict:
         presence = max(0.0, raw)
 
     if entry and entry.comment in SPECIAL_STATUSES:
-        deviation = 8.0 * float(service_degree)
+        day_norm = float(entry.day_norm_hours) if entry.day_norm_hours else 8.0
+        deviation = day_norm * float(service_degree)
     elif entry and entry.adj_sign and entry.adj_from and entry.adj_to:
         hours = _time_to_hours(entry.adj_to) - _time_to_hours(entry.adj_from)
         deviation = hours if entry.adj_sign == '+' else -hours

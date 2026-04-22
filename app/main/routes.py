@@ -155,6 +155,11 @@ def save_entry():
     adj_sign = request.form.get('adj_sign', '').strip()
     entry.adj_sign = adj_sign if adj_sign in ('+', '-') else None
     entry.notes = request.form.get('notes', '').strip() or None
+    try:
+        day_norm = request.form.get('day_norm_hours', '').strip()
+        entry.day_norm_hours = float(day_norm) if day_norm else None
+    except ValueError:
+        entry.day_norm_hours = None
 
     db.session.commit()
     flash('Sparat.', 'success')

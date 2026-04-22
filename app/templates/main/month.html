@@ -138,6 +138,7 @@
                         data-adj-to="{{ day.entry.adj_to|timeformat if day.entry else '' }}"
                         data-adj-sign="{{ day.entry.adj_sign or '' if day.entry else '' }}"
                         data-notes="{{ day.entry.notes or '' if day.entry else '' }}"
+                        data-day-norm="{{ day.entry.day_norm_hours if day.entry and day.entry.day_norm_hours else '' }}"
                         title="{{ 'Redigera' if day.entry else 'Lägg till' }}">
                         <i class="bi {% if day.entry %}bi-pencil{% else %}bi-plus{% endif %}"></i>
                     </button>
@@ -211,6 +212,11 @@
                         <input type="text" name="notes" id="notes" class="form-control"
                                placeholder="Valfri notering">
                     </div>
+                    <div class="mt-3">
+                        <label class="form-label fw-semibold">Normtid (h) <span class="text-muted fw-normal small">— lämna tomt för 8h standard</span></label>
+                        <input type="number" name="day_norm_hours" id="day_norm_hours" class="form-control"
+                               placeholder="8" min="0" max="24" step="0.5">
+                    </div>
                 </div>
                 <div class="modal-footer justify-content-between">
                     <button type="submit" form="deleteForm" id="deleteBtn" style="display:none;"
@@ -260,6 +266,7 @@ modal.addEventListener('show.bs.modal', function(event) {
     document.getElementById('adj_to').value = d.adjTo || '';
     document.getElementById('adj_sign').value = d.adjSign || '';
     document.getElementById('notes').value = d.notes || '';
+    document.getElementById('day_norm_hours').value = d.dayNorm || '';
 
     const deleteBtn = document.getElementById('deleteBtn');
     const deleteForm = document.getElementById('deleteForm');

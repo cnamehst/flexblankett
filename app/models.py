@@ -85,6 +85,7 @@ class TimeEntry(db.Model):
     adj_to = db.Column(db.Time)
     adj_sign = db.Column(db.Enum('+', '-'))
     notes = db.Column(db.String(256))
+    day_norm_hours = db.Column(db.Numeric(4, 2), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
