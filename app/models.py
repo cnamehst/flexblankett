@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 from datetime import datetime
 from app import db, login_manager
 from flask_login import UserMixin
@@ -90,3 +92,30 @@ class TimeEntry(db.Model):
 
     def __repr__(self):
         return f'<TimeEntry {self.entry_date}>'
+
+
+class ApiKey(db.Model):
+    __tablename__ = 'api_keys'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    name = db.Column(db.String(64), nullable=False)
+    key_hash = db.Column(db.String(64), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_used_at = db.Column(db.DateTime, nullable=True)
+    active = db.Column(db.Boolean, default=True, nullable=False)
+
+    user = db.relationship('User', backref='api_keys')
+
+    @staticmethod
+    def generate():
+        raw = 'fbk_' + secrets.token_urlsafe(32)
+        key_hash = hashlib.sha256(raw.encode()).hexdigest()
+        return raw, key_hash
+
+    @staticmethod
+    def hash(raw):
+        return hashlib.sha256(raw.encode()).hexdigest()
+
+    def __repr__(self):
+        return f'<ApiKey {self.name}>'

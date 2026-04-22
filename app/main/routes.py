@@ -6,7 +6,7 @@ from flask import render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 from app import db
 from app.main import bp
-from app.models import TimeEntry, MonthReference
+from app.models import TimeEntry, MonthReference, ApiKey
 from app.calculations import (
     calc_entry, calc_month_summary,
     MONTH_NAMES_SV, WEEKDAY_NAMES_SV,
@@ -247,6 +247,43 @@ def import_entries():
     db.session.commit()
     flash(f'Import klar: {created} skapade, {updated} uppdaterade, {skipped} hoppade över, {errors} fel.', 'success')
     return render_template('main/import.html')
+
+
+@bp.route('/keys')
+@login_required
+def api_keys():
+    keys = ApiKey.query.filter_by(user_id=current_user.id).order_by(ApiKey.created_at.desc()).all()
+    new_key = None
+    if request.args.get('new_key'):
+        new_key = request.args.get('new_key')
+    return render_template('main/keys.html', keys=keys, new_key=new_key)
+
+
+@bp.route('/keys/create', methods=['POST'])
+@login_required
+def create_api_key():
+    name = request.form.get('name', '').strip()
+    if not name:
+        flash('Ange ett namn för nyckeln.', 'warning')
+        return redirect(url_for('main.api_keys'))
+    raw, key_hash = ApiKey.generate()
+    key = ApiKey(user_id=current_user.id, name=name, key_hash=key_hash)
+    db.session.add(key)
+    db.session.commit()
+    return redirect(url_for('main.api_keys', new_key=raw))
+
+
+@bp.route('/keys/<int:key_id>/revoke', methods=['POST'])
+@login_required
+def revoke_api_key(key_id):
+    key = db.session.get(ApiKey, key_id)
+    if not key or key.user_id != current_user.id:
+        flash('Inte behörig.', 'danger')
+        return redirect(url_for('main.api_keys'))
+    key.active = False
+    db.session.commit()
+    flash(f'Nyckel "{key.name}" återkallad.', 'success')
+    return redirect(url_for('main.api_keys'))
 
 
 @bp.route('/overview/<int:year>')
