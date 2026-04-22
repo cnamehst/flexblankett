@@ -31,6 +31,10 @@ def create_app():
         from app.admin import bp as admin_bp
         app.register_blueprint(admin_bp, url_prefix='/admin')
 
+        from app.api import bp as api_bp
+        csrf.exempt(api_bp)
+        app.register_blueprint(api_bp)
+
     @app.template_filter('timeformat')
     def timeformat(t):
         return t.strftime('%H:%M') if t else ''
