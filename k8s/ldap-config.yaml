@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flexblankett-ldap
+  namespace: flexblankett
+data:
+  LDAP_ENABLED: "true"
+  LDAP_HOST: "ipa.cname.se"
+  LDAP_BASE_DN: "dc=cname,dc=se"
+  LDAP_CA_CERT: "/etc/ssl/certs/ipa-ca.pem"
+  ipa-ca.pem: |
+    -----BEGIN CERTIFICATE-----
+    MIIEgjCCAuqgAwIBAgIBATANBgkqhkiG9w0BAQsFADAzMREwDwYDVQQKDAhDTkFN
+    RS5TRTEeMBwGA1UEAwwVQ2VydGlmaWNhdGUgQXV0aG9yaXR5MB4XDTIzMDQwNDA5
+    NDIxNFoXDTQzMDQwNDA5NDIxNFowMzERMA8GA1UECgwIQ05BTUUuU0UxHjAcBgNV
+    BAMMFUNlcnRpZmljYXRlIEF1dGhvcml0eTCCAaIwDQYJKoZIhvcNAQEBBQADggGP
+    ADCCAYoCggGBAL/4YpJ/quFBylg1eXg46cnmp2I5S8o71VKB5A+ov1bl2ICq6un2
+    sIp0sY/XYpL3eDFWJF0XvBVR1C5pYj5IrI7crnT5MSKMleIyYDFfoF2b62IlL+uh
+    poB/O1zLAgo4f04RKt9LpLyzL2gFXDS1a0nmfOVr1PqBeugNZCmTB0CPF3LaFRE6
+    oWIMLsNxOsXdLi7y7UVlYPpT7iACpU0HseKoZqv+4eAashcU/RQLqh7tzzMcRAMw
+    DbJDTIeyye7XYVLeuVsCl4HwleOsLcUoBeJDhcEWOeRH5oH8jmjwYqpUdvjVfK03
+    eo2fphdr4wrwsJt5zL/MFsH2tq1h3AfEDCnUIOrPu+Qt2mPtIFj/5aGI8uSY6H8j
+    DoUbnAjGOzysPkAtmRfdfsFhVtkYPZJd5E/3y7rh1TLjibJc3ufopNOtYYmMInaQ
+    Dd54e0148w+l4v4x59nfjV2Frlb3VSXdhRVFs1SJZclCM/YFp7bhsIf9BzPYwzYC
+    OHiwC2xFDpViHwIDAQABo4GgMIGdMB8GA1UdIwQYMBaAFOpJED/FGGGJHav1f+YX
+    Fkig7vZbMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgHGMB0GA1UdDgQW
+    BBTqSRA/xRhhiR2r9X/mFxZIoO72WzA6BggrBgEFBQcBAQQuMCwwKgYIKwYBBQUH
+    MAGGHmh0dHA6Ly9pcGEtY2EuY25hbWUuc2UvY2Evb2NzcDANBgkqhkiG9w0BAQsF
+    AAOCAYEAWflovIEPFJf9cKBH8MqZfQgITkoCpfQIj5Goi+UJgyhx2KhSromeEize
+    M6Jv4xLcXk6QqchDnTFuPeRZTHKel+j9w6+SvJNd9eceEm5WTb4wRhk+pYary4Bt
+    o6FIb5Gi3TzTCDXEmoCn2rCXgQS+aUXGD0t4svuoNgYJb5lM8VT5El5bpxmqPJPt
+    XvjLN1GeDLycDGIviFqOJ+dHEHyVrx+9sl8Mck0+rtUDtdFj2C8Zfju5dq/MxEiU
+    giebtLbzYCIIcExCZwt6EAEKO3BM6fVYENHe//CWTBNU5sVXtcBmHsK9BdDzK3aR
+    BsRbsnq8tOi00p1uqwpPdeg83JaScyXwxPYYi/YCmWZz4zYK0LHTf3Zzo5chQ5S9
+    xO+6Yqu6aGBvMUckapm/5v4XNHC/BMD1zEETjeFPG6j90CoYs64cdywwNJUshOZn
+    AKEYMuFr8pWvjTGvZqaK+b6ReJMMjU6uoslTE6lOV3F0Z/JidH691ArieaZyeWBB
+    MenTEap8
+    -----END CERTIFICATE-----
