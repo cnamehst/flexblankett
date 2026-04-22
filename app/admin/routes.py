@@ -100,6 +100,7 @@ def edit_user(user_id):
             emp = Employee(user_id=user.id, name='')
             db.session.add(emp)
             db.session.flush()
+            user.employee = emp
 
         user.employee.name = request.form.get('name', '').strip()
         user.employee.ssn = request.form.get('ssn', '').strip() or None
