@@ -2,7 +2,7 @@
 
 Web application for tracking flexible working hours (flextid). Supports multiple employees, monthly/yearly summaries, special statuses (vacation, sick leave, parental care), per-day norm overrides for shortened days, CSV import, and a REST API with per-user API keys.
 
-Built with Python/Flask, MariaDB, Bootstrap 5. Designed to run on Kubernetes.
+Built with Python/Flask, MariaDB, Bootstrap 5. Designed to run on Kubernetes. Supports local password authentication and IPA/LDAP single sign-on.
 
 ---
 
@@ -100,6 +100,56 @@ kubectl get certificate -n flexblankett
 
 ---
 
+## LDAP / IPA authentication
+
+LDAP support is optional and disabled by default. When enabled, users authenticate directly against the LDAP server — no bind account or service user is required. The app binds as the user (`uid=<username>,cn=users,cn=accounts,<base_dn>`) using the submitted password.
+
+On first successful LDAP login the user row is auto-provisioned in the database with `password_hash='!ldap'` (local password login disabled). An admin must then create an **employee profile** for the user via the admin panel before they can use the timesheet.
+
+### Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LDAP_ENABLED` | `false` | Set to `true` to enable |
+| `LDAP_HOST` | `ipa.cname.se` | LDAP server hostname |
+| `LDAP_BASE_DN` | `dc=cname,dc=se` | Base DN for user search |
+| `LDAP_CA_CERT` | `/etc/ssl/certs/ipa-ca.pem` | Path to CA certificate for TLS verification |
+
+LDAP always uses port 636 (LDAPS). Plain LDAP is not supported.
+
+### Local development with LDAP
+
+Add to your `.env`:
+```
+LDAP_ENABLED=true
+LDAP_HOST=ipa.example.com
+LDAP_BASE_DN=dc=example,dc=com
+LDAP_CA_CERT=/path/to/ca.pem
+```
+
+### Kubernetes deployment with LDAP
+
+Two ConfigMaps are required — one for env vars, one for the CA certificate file:
+
+```bash
+# edit k8s/ldap-config.yaml — set your LDAP_HOST, LDAP_BASE_DN, and paste your CA cert
+kubectl apply -f k8s/ldap-config.yaml
+kubectl apply -f k8s/deployment.yaml   # already references both ConfigMaps
+```
+
+`k8s/ldap-config.yaml` contains both ConfigMaps: `flexblankett-ldap` (env vars) and `flexblankett-ipa-ca` (CA cert mounted at `/etc/ssl/certs/ipa-ca.pem`). They are kept separate because Kubernetes does not allow keys with dots or dashes to be injected as environment variables.
+
+### After first LDAP login
+
+The user lands on a "no employee profile" page. An admin must:
+
+1. Log in with an admin account
+2. Go to **Admin → Users**
+3. Click **Edit** on the LDAP user
+4. Fill in the employee name and settings, then save
+
+---
+
 ## Schema migrations
 
 There is no Alembic migration setup. When a new column is added, run the ALTER TABLE directly in the running pod:
@@ -143,6 +193,17 @@ App available at `http://localhost:5000`.
 ---
 
 ## CI/CD
+
+Two build pipelines run on push to `main`:
+
+- **Gitea Actions** (`.gitea/workflows/build.yml`) — builds and pushes to the private Gitea registry
+- **GitHub Actions** (`.github/workflows/build.yml`) — builds and pushes to GitHub Container Registry (`ghcr.io`)
+
+The GitHub image is publicly pullable (once the package visibility is set to public in GitHub):
+
+```bash
+docker pull ghcr.io/cnamehst/flexblankett:latest
+```
 
 Gitea Actions workflow at `.gitea/workflows/build.yml` builds and pushes the image on push to `main`.
 
@@ -218,3 +279,4 @@ sensor:
 - **CSV import** — paste CSV (`datum,start,slut,kommentar`) to bulk-import past months
 - **Admin panel** — manage users and employee profiles
 - **REST API** — per-user API keys, read and write access
+- **LDAP/IPA authentication** — optional SSO, auto-provisions users on first login
