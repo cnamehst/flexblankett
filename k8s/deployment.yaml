@@ -24,6 +24,13 @@ spec:
           envFrom:
             - secretRef:
                 name: flexblankett-secret
+            - configMapRef:
+                name: flexblankett-ldap
+          volumeMounts:
+            - name: ipa-ca
+              mountPath: /etc/ssl/certs/ipa-ca.pem
+              subPath: ipa-ca.pem
+              readOnly: true
           resources:
             requests:
               memory: "128Mi"
@@ -43,3 +50,7 @@ spec:
               port: 5000
             initialDelaySeconds: 15
             periodSeconds: 20
+      volumes:
+        - name: ipa-ca
+          configMap:
+            name: flexblankett-ldap
