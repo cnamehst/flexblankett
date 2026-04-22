@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4" style="max-width:700px">
+    <h4><i class="bi bi-upload"></i> Importera tidsposter</h4>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} alert-dismissible fade show">{{ msg }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endwith %}
+
+    <p class="text-muted">Klistra in CSV-data med en rad per dag. Kolumner: <code>datum,start,slut,kommentar</code><br>
+    Datum i formatet <code>ÅÅÅÅ-MM-DD</code>, tider som <code>HH:MM</code>. Kommentar är valfri. Rubrikrad hoppas över automatiskt.</p>
+
+    <div class="card mb-3">
+        <div class="card-body bg-light">
+            <pre class="mb-0 small">datum,start,slut,kommentar
+2026-01-02,07:00,15:30,
+2026-01-03,07:00,16:00,Möte
+2026-01-07,07:00,15:30,Semester</pre>
+        </div>
+    </div>
+
+    <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="mb-3">
+            <label class="form-label fw-semibold">CSV-data</label>
+            <textarea name="csv_data" class="form-control font-monospace" rows="16" placeholder="datum,start,slut,kommentar&#10;2026-01-02,07:00,15:30,"></textarea>
+        </div>
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" name="overwrite" id="overwrite" value="1">
+            <label class="form-check-label" for="overwrite">Skriv över befintliga poster</label>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-upload"></i> Importera</button>
+            <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">Avbryt</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
