@@ -14,10 +14,10 @@ jobs:
 
       - name: Build and push
         run: |
-          echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login git.cname.se -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
-          docker build \
+          echo "${{ secrets.REGISTRY_PASSWORD }}" | /usr/bin/docker login git.cname.se -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+          /usr/bin/docker build \
             -t git.cname.se/hst/flexblankett:latest \
             -t git.cname.se/hst/flexblankett:${{ github.sha }} \
             .
-          docker push git.cname.se/hst/flexblankett:latest
-          docker push git.cname.se/hst/flexblankett:${{ github.sha }}
+          /usr/bin/docker push git.cname.se/hst/flexblankett:latest
+          /usr/bin/docker push git.cname.se/hst/flexblankett:${{ github.sha }}
