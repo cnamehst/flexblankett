@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        run: GIT_SSL_CAINFO=/etc/ipa/ca.crt git clone https://oauth2:${{ github.token }}@git.cname.se/${{ github.repository }}.git .
+        run: git -c http.sslVerify=false clone https://oauth2:${{ github.token }}@git.cname.se/${{ github.repository }}.git .
 
       - name: Build and push
         run: |
