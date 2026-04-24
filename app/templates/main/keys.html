@@ -57,9 +57,10 @@
                 <td class="text-muted small">{{ key.last_used_at.strftime('%Y-%m-%d %H:%M') if key.last_used_at else '—' }}</td>
                 <td class="text-end">
                     <form method="post" action="{{ url_for('main.revoke_api_key', key_id=key.id) }}"
-                          onsubmit="return confirm('Återkalla nyckel {{ key.name }}?')">
+                          class="revoke-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                data-keyname="{{ key.name }}">
                             <i class="bi bi-x-lg"></i> Återkalla
                         </button>
                     </form>
@@ -95,4 +96,16 @@
         </div>
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('.revoke-form').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+        var name = form.querySelector('button[data-keyname]').dataset.keyname;
+        if (!confirm('Återkalla nyckel ' + name + '?')) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
 {% endblock %}

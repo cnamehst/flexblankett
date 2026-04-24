@@ -2,7 +2,7 @@ import calendar
 import csv
 import io
 from datetime import date, time
-from flask import render_template, redirect, url_for, request, flash
+from flask import render_template, redirect, url_for, request, flash, session
 from flask_login import login_required, current_user
 from app import db
 from app.main import bp
@@ -261,9 +261,7 @@ def import_entries():
 @login_required
 def api_keys():
     keys = ApiKey.query.filter_by(user_id=current_user.id).order_by(ApiKey.created_at.desc()).all()
-    new_key = None
-    if request.args.get('new_key'):
-        new_key = request.args.get('new_key')
+    new_key = session.pop('new_api_key', None)
     return render_template('main/keys.html', keys=keys, new_key=new_key)
 
 
@@ -278,7 +276,8 @@ def create_api_key():
     key = ApiKey(user_id=current_user.id, name=name, key_hash=key_hash)
     db.session.add(key)
     db.session.commit()
-    return redirect(url_for('main.api_keys', new_key=raw))
+    session['new_api_key'] = raw
+    return redirect(url_for('main.api_keys'))
 
 
 @bp.route('/keys/<int:key_id>/revoke', methods=['POST'])
