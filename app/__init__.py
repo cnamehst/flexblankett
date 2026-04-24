@@ -41,6 +41,20 @@ def create_app():
         csrf.exempt(api_bp)
         app.register_blueprint(api_bp)
 
+    @app.after_request
+    def add_security_headers(response):
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "font-src https://cdn.jsdelivr.net; "
+            "img-src 'self' data:; "
+            "frame-ancestors 'none';"
+        )
+        return response
+
     @app.template_filter('timeformat')
     def timeformat(t):
         return t.strftime('%H:%M') if t else ''

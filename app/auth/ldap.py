@@ -1,12 +1,21 @@
+import re
 import ssl
 import logging
 from ldap3 import Server, Connection, Tls, SUBTREE
+from ldap3.utils.conv import escape_filter_chars
 
 log = logging.getLogger(__name__)
+
+# IPA usernames: letters, digits, dot, hyphen, underscore only
+_SAFE_USERNAME = re.compile(r'^[a-zA-Z0-9._-]{1,64}$')
 
 
 def ldap_authenticate(host, base_dn, ca_cert, username, password):
     """Bind as username against IPA LDAP. Returns dict of user attrs on success, None on failure."""
+    if not _SAFE_USERNAME.match(username):
+        log.info('LDAP: rejected username with disallowed characters: %r', username)
+        return None
+
     user_dn = f'uid={username},cn=users,cn=accounts,{base_dn}'
 
     try:
@@ -18,9 +27,10 @@ def ldap_authenticate(host, base_dn, ca_cert, username, password):
             log.info('LDAP bind failed for %s: %s', username, conn.result)
             return None
 
+        safe_uid = escape_filter_chars(username)
         conn.search(
             search_base=f'cn=users,cn=accounts,{base_dn}',
-            search_filter=f'(uid={username})',
+            search_filter=f'(uid={safe_uid})',
             search_scope=SUBTREE,
             attributes=['mail'],
         )

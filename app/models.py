@@ -49,7 +49,7 @@ class Employee(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), unique=True, nullable=False)
     name = db.Column(db.String(128), nullable=False)
-    ssn = db.Column(db.String(13))
+    ssn = db.Column(db.String(13))  # GDPR: plaintext PII — remove or encrypt if not strictly needed
     service_degree = db.Column(db.Numeric(4, 2), default=1.0, nullable=False)
     initial_flex_balance = db.Column(db.Numeric(8, 4), default=0.0, nullable=False)
     base_year = db.Column(db.Integer, default=2026, nullable=False)
