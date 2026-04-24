@@ -8,6 +8,7 @@ class Config:
         'mysql+pymysql://flexuser:flexpass@localhost:3306/flexblankett'
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    MAX_CONTENT_LENGTH = 1 * 1024 * 1024  # 1 MB — prevents large body DoS
     WTF_CSRF_ENABLED = True
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True

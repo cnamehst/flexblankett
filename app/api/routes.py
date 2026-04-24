@@ -3,7 +3,7 @@ from datetime import date, datetime, time
 from functools import wraps
 
 from flask import request, jsonify, g
-from app import db
+from app import db, limiter
 from app.api import bp
 from app.models import ApiKey, TimeEntry, MonthReference
 from app.calculations import calc_entry, calc_month_summary, MONTH_NAMES_SV
@@ -77,6 +77,7 @@ def _parse_time(val):
 
 @bp.route('/api/v1/balance')
 @_api_key_required
+@limiter.limit('60 per minute')
 def balance():
     """Current flex balance up to and including the current month."""
     employee, err, code = _get_employee()
@@ -110,6 +111,7 @@ def balance():
 
 @bp.route('/api/v1/month/<int:year>/<int:month>')
 @_api_key_required
+@limiter.limit('60 per minute')
 def month(year, month):
     if not 1 <= month <= 12:
         return jsonify({'error': 'Invalid month'}), 400
@@ -144,6 +146,7 @@ def month(year, month):
 
 @bp.route('/api/v1/overview/<int:year>')
 @_api_key_required
+@limiter.limit('60 per minute')
 def overview(year):
     employee, err, code = _get_employee()
     if err:
@@ -179,6 +182,7 @@ def overview(year):
 
 @bp.route('/api/v1/entry', methods=['POST'])
 @_api_key_required
+@limiter.limit('60 per minute')
 def save_entry():
     employee, err, code = _get_employee()
     if err:
