@@ -110,10 +110,10 @@
             <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">Avbryt</a>
         </div>
         {% if action == 'edit' and edit_user.id != current_user.id %}
-        <form method="post" action="{{ url_for('admin.delete_user', user_id=edit_user.id) }}">
+        <form method="post" action="{{ url_for('admin.delete_user', user_id=edit_user.id) }}" id="deleteUserForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-outline-danger"
-                    onclick="return confirm('Ta bort {{ edit_user.username }}? All tiddata raderas.')">
+                    data-username="{{ edit_user.username }}">
                 <i class="bi bi-trash"></i> Ta bort användare
             </button>
         </form>
@@ -123,4 +123,17 @@
 </div>
 </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+var deleteForm = document.getElementById('deleteUserForm');
+if (deleteForm) {
+    deleteForm.addEventListener('submit', function(e) {
+        var username = deleteForm.querySelector('button[data-username]').dataset.username;
+        if (!confirm('Ta bort ' + username + '? All tiddata raderas.')) {
+            e.preventDefault();
+        }
+    });
+}
+</script>
 {% endblock %}

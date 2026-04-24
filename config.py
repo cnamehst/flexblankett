@@ -9,6 +9,11 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     WTF_CSRF_ENABLED = True
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    REMEMBER_COOKIE_SECURE = True
+    REMEMBER_COOKIE_HTTPONLY = True
 
     LDAP_ENABLED = os.environ.get('LDAP_ENABLED', 'false').lower() == 'true'
     LDAP_HOST = os.environ.get('LDAP_HOST', 'ipa.cname.se')
