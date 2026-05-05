@@ -8,9 +8,9 @@
   {%- elif field == 'role' %}{{ edit_user.role }}
   {%- elif field == 'name' %}{{ edit_user.employee.name if edit_user.employee else '' }}
   {%- elif field == 'ssn' %}{{ edit_user.employee.ssn or '' if edit_user.employee else '' }}
-  {%- elif field == 'service_degree' %}{{ edit_user.employee.service_degree if edit_user.employee else 1.0 }}
-  {%- elif field == 'initial_flex_balance' %}{{ edit_user.employee.initial_flex_balance if edit_user.employee else 0 }}
-  {%- elif field == 'base_year' %}{{ edit_user.employee.base_year if edit_user.employee else 2026 }}
+  {%- elif field == 'service_degree' %}{{ (edit_user.employee.service_degree if edit_user.employee.service_degree is not none else 1.0) if edit_user.employee else 1.0 }}
+  {%- elif field == 'initial_flex_balance' %}{{ (edit_user.employee.initial_flex_balance if edit_user.employee.initial_flex_balance is not none else 0) if edit_user.employee else 0 }}
+  {%- elif field == 'base_year' %}{{ (edit_user.employee.base_year if edit_user.employee.base_year is not none else 2026) if edit_user.employee else 2026 }}
   {%- else %}{{ default }}{%- endif %}
 {%- elif form_data %}{{ form_data.get(field, default) }}
 {%- else %}{{ default }}{%- endif %}

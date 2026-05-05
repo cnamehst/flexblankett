@@ -13,10 +13,14 @@ csrf = CSRFProtect()
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
 
 
+APP_VERSION = "1.0.0"
+
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object('config.Config')
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+    app.jinja_env.globals['APP_VERSION'] = APP_VERSION
 
     db.init_app(app)
     login_manager.init_app(app)
