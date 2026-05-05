@@ -30,6 +30,9 @@ jobs:
       - name: Build and push
         run: |
           docker build \
+            --build-arg HTTP_PROXY=http://proxy.cname.se:3128 \
+            --build-arg HTTPS_PROXY=http://proxy.cname.se:3128 \
+            --build-arg NO_PROXY=git.cname.se,localhost,127.0.0.1 \
             -t git.cname.se/hst/flexblankett:latest \
             -t git.cname.se/hst/flexblankett:${{ github.sha }} \
             .
