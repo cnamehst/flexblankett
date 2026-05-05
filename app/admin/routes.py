@@ -85,7 +85,7 @@ def edit_user(user_id):
         if conflict:
             flash(f'Användarnamn "{new_username}" redan taget.', 'danger')
             return render_template('admin/user_form.html', action='edit',
-                                   edit_user=user, form_data=request.form)
+                                   edit_user=user, form_data=request.form, prefill={})
 
         user.username = new_username
         user.email = new_email
@@ -112,7 +112,13 @@ def edit_user(user_id):
         flash('Sparat.', 'success')
         return redirect(url_for('admin.users'))
 
-    return render_template('admin/user_form.html', action='edit', edit_user=user, form_data={})
+    emp = user.employee
+    prefill = {
+        'service_degree': float(emp.service_degree) if emp and emp.service_degree is not None else 1.0,
+        'initial_flex_balance': float(emp.initial_flex_balance) if emp and emp.initial_flex_balance is not None else 0.0,
+        'base_year': int(emp.base_year) if emp and emp.base_year is not None else 2026,
+    }
+    return render_template('admin/user_form.html', action='edit', edit_user=user, form_data={}, prefill=prefill)
 
 
 @bp.route('/users/<int:user_id>/delete', methods=['POST'])
