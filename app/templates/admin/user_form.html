@@ -30,7 +30,7 @@
 </div>
 
 <div class="main-card p-4">
-<form method="post">
+<form method="post" id="editForm">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     <h5 class="mb-3">Inloggningsuppgifter</h5>
@@ -101,25 +101,25 @@
                    value="{{ field_val('base_year', '2026') }}" required>
         </div>
     </div>
-
-    <div class="d-flex justify-content-between mt-4">
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-check-lg"></i> Spara
-            </button>
-            <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">Avbryt</a>
-        </div>
-        {% if action == 'edit' and edit_user.id != current_user.id %}
-        <form method="post" action="{{ url_for('admin.delete_user', user_id=edit_user.id) }}" id="deleteUserForm">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-outline-danger"
-                    data-username="{{ edit_user.username }}">
-                <i class="bi bi-trash"></i> Ta bort användare
-            </button>
-        </form>
-        {% endif %}
-    </div>
 </form>
+
+<div class="d-flex justify-content-between mt-4">
+    <div class="d-flex gap-2">
+        <button type="submit" form="editForm" class="btn btn-primary">
+            <i class="bi bi-check-lg"></i> Spara
+        </button>
+        <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">Avbryt</a>
+    </div>
+    {% if action == 'edit' and edit_user.id != current_user.id %}
+    <form method="post" action="{{ url_for('admin.delete_user', user_id=edit_user.id) }}" id="deleteUserForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-danger"
+                data-username="{{ edit_user.username }}">
+            <i class="bi bi-trash"></i> Ta bort användare
+        </button>
+    </form>
+    {% endif %}
+</div>
 </div>
 </div>
 </div>
