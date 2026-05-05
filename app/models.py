@@ -108,7 +108,7 @@ class ApiKey(db.Model):
     last_used_at = db.Column(db.DateTime, nullable=True)
     active = db.Column(db.Boolean, default=True, nullable=False)
 
-    user = db.relationship('User', backref='api_keys')
+    user = db.relationship('User', backref=db.backref('api_keys', cascade='all, delete-orphan'))
 
     @staticmethod
     def generate():
