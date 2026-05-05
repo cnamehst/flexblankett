@@ -13,7 +13,7 @@ csrf = CSRFProtect()
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
 
 
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 
 
 def create_app():
