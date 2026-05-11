@@ -20,3 +20,4 @@ class Config:
     LDAP_HOST = os.environ.get('LDAP_HOST', 'ipa.cname.se')
     LDAP_BASE_DN = os.environ.get('LDAP_BASE_DN', 'dc=cname,dc=se')
     LDAP_CA_CERT = os.environ.get('LDAP_CA_CERT', '/etc/ssl/certs/ipa-ca.pem')
+    LDAP_REQUIRED_GROUP = os.environ.get('LDAP_REQUIRED_GROUP', 'app-flexblankett')

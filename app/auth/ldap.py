@@ -10,8 +10,12 @@ log = logging.getLogger(__name__)
 _SAFE_USERNAME = re.compile(r'^[a-zA-Z0-9._-]{1,64}$')
 
 
-def ldap_authenticate(host, base_dn, ca_cert, username, password):
-    """Bind as username against IPA LDAP. Returns dict of user attrs on success, None on failure."""
+def ldap_authenticate(host, base_dn, ca_cert, username, password, required_group=None):
+    """Bind as username against IPA LDAP. Returns dict of user attrs on success, None on failure.
+
+    If required_group is set (e.g. 'app-flexblankett'), the user must be a member of
+    cn=<required_group>,cn=groups,cn=accounts,<base_dn> or None is returned.
+    """
     if not _SAFE_USERNAME.match(username):
         log.info('LDAP: rejected username with disallowed characters: %r', username)
         return None
@@ -26,6 +30,20 @@ def ldap_authenticate(host, base_dn, ca_cert, username, password):
         if not conn.bind():
             log.info('LDAP bind failed for %s: %s', username, conn.result)
             return None
+
+        if required_group:
+            group_dn = f'cn={required_group},cn=groups,cn=accounts,{base_dn}'
+            safe_user_dn = escape_filter_chars(user_dn)
+            conn.search(
+                search_base=group_dn,
+                search_filter=f'(member={safe_user_dn})',
+                search_scope=SUBTREE,
+                attributes=[],
+            )
+            if not conn.entries:
+                log.info('LDAP: %s not in required group %s', username, required_group)
+                conn.unbind()
+                return None
 
         safe_uid = escape_filter_chars(username)
         conn.search(

@@ -17,6 +17,7 @@ def _try_ldap(username, password):
         ca_cert=cfg['LDAP_CA_CERT'],
         username=username,
         password=password,
+        required_group=cfg.get('LDAP_REQUIRED_GROUP'),
     )
 
 
