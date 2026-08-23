@@ -117,6 +117,9 @@
                             <span class="text-muted small">{{ day.entry.comment }}</span>
                         {% endif %}
                     {% endif %}
+                    {% if day.entry and day.entry.notes %}
+                        <div class="small text-muted">{{ day.entry.notes }}</div>
+                    {% endif %}
                 </td>
                 <td class="text-end time-cell {% if day.calc and day.calc.deviation > 0 %}text-success{% elif day.calc and day.calc.deviation < 0 %}text-danger{% endif %}">
                     {% if day.calc and day.calc.deviation != 0 %}{{ day.calc.deviation|signed }}{% endif %}

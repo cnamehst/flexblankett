@@ -21,12 +21,13 @@ def _time_to_hours(t: Optional[time]) -> float:
 def calc_entry(entry, service_degree: float) -> dict:
     presence = 0.0
     deviation = 0.0
+    is_special = bool(entry and entry.comment in SPECIAL_STATUSES)
 
-    if entry and entry.start_time and entry.end_time:
+    if not is_special and entry and entry.start_time and entry.end_time:
         raw = _time_to_hours(entry.end_time) - _time_to_hours(entry.start_time) - 0.5
         presence = max(0.0, raw)
 
-    if entry and entry.comment in SPECIAL_STATUSES:
+    if is_special:
         day_norm = float(entry.day_norm_hours) if entry.day_norm_hours else 8.0
         deviation = day_norm * float(service_degree)
     elif entry and entry.adj_sign and entry.adj_from and entry.adj_to:

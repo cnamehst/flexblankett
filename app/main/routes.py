@@ -9,7 +9,7 @@ from app.main import bp
 from app.models import TimeEntry, MonthReference, ApiKey
 from app.calculations import (
     calc_entry, calc_month_summary,
-    MONTH_NAMES_SV, WEEKDAY_NAMES_SV,
+    MONTH_NAMES_SV, WEEKDAY_NAMES_SV, SPECIAL_STATUSES,
 )
 
 
@@ -119,7 +119,7 @@ def month_view(year, month):
         ref=ref,
         prev_year=prev_year, prev_month=prev_month,
         next_year=next_year, next_month=next_month,
-        special_statuses=['Semester', 'Sjuk', 'Vård av barn'],
+        special_statuses=list(SPECIAL_STATUSES),
     )
 
 
