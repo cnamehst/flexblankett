@@ -8,5 +8,6 @@ build/
 venv/
 *.sqlite3
 instance/
+graphify-out/
 .claude/
 k8s/secret.yaml
