@@ -23,9 +23,12 @@ def _try_ldap(username, password):
 
 def _safe_next():
     next_url = request.args.get('next', '')
-    if next_url and urlparse(next_url).netloc:
+    # Only same-site absolute paths; reject //host and backslash tricks
+    # (/\evil.com is normalised to //evil.com by browsers).
+    if (not next_url.startswith('/') or next_url.startswith('//')
+            or '\\' in next_url or urlparse(next_url).netloc):
         return url_for('main.index')
-    return next_url or url_for('main.index')
+    return next_url
 
 
 @bp.route('/login', methods=['GET', 'POST'])
