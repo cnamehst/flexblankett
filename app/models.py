@@ -8,7 +8,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    user = db.session.get(User, int(user_id))
+    return user if user and user.active else None
 
 
 class User(UserMixin, db.Model):

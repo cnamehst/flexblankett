@@ -5,7 +5,7 @@ from functools import wraps
 from flask import request, jsonify, g
 from app import db, limiter
 from app.api import bp
-from app.models import ApiKey, TimeEntry, MonthReference
+from app.models import ApiKey, TimeEntry, MonthReference, User
 from app.calculations import calc_entry, calc_month_summary, MONTH_NAMES_SV
 
 
@@ -16,7 +16,9 @@ def _api_key_required(f):
         if not auth.startswith('Bearer '):
             return jsonify({'error': 'Missing or invalid Authorization header'}), 401
         key_hash = ApiKey.hash(auth[7:])
-        api_key = ApiKey.query.filter_by(key_hash=key_hash, active=True).first()
+        api_key = (ApiKey.query.join(User, ApiKey.user_id == User.id)
+                   .filter(ApiKey.key_hash == key_hash, ApiKey.active.is_(True),
+                           User.active.is_(True)).first())
         if not api_key:
             return jsonify({'error': 'Invalid or revoked API key'}), 401
         api_key.last_used_at = datetime.utcnow()
