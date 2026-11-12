@@ -13,12 +13,26 @@ spec:
       labels:
         app: flexblankett
     spec:
+      # The app never talks to the Kubernetes API
+      automountServiceAccountToken: false
+      securityContext:
+        # uid/gid created in the Dockerfile
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       imagePullSecrets:
         - name: gitea-registry
       containers:
         - name: flexblankett
           image: git.cname.se/hst/flexblankett:latest
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 5000
           envFrom:
@@ -31,6 +45,8 @@ spec:
               mountPath: /etc/ssl/certs/ipa-ca.pem
               subPath: ipa-ca.pem
               readOnly: true
+            - name: tmp
+              mountPath: /tmp
           resources:
             requests:
               memory: "128Mi"
@@ -54,3 +70,5 @@ spec:
         - name: ipa-ca
           configMap:
             name: flexblankett-ipa-ca
+        - name: tmp
+          emptyDir: {}

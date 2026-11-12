@@ -62,9 +62,12 @@ Edit `k8s/secret.yaml`:
 stringData:
   SECRET_KEY: "a-long-random-string"   # e.g. openssl rand -hex 32
   DATABASE_URL: "mysql+pymysql://flexuser:yourpassword@db-host:3306/flexblankett"
+  RATELIMIT_STORAGE_URI: "redis://:password@redis.redis.svc.cluster.local:6379/0"  # optional
 ```
 
 `k8s/secret.yaml` is gitignored — never commit it.
+
+`RATELIMIT_STORAGE_URI` points the login rate limiter at a shared Redis so the limit holds across gunicorn workers and replicas. Omit it to use per-process in-memory counters — fine for a single worker, otherwise the effective limit is multiplied by the number of workers. If Redis is unreachable the app falls back to in-memory counters instead of failing requests. URL-encode the password if it contains special characters.
 
 ### 3. Update the ingress hostname
 

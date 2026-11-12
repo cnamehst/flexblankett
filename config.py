@@ -20,6 +20,14 @@ class Config:
     REMEMBER_COOKIE_SAMESITE = 'Lax'
     REMEMBER_COOKIE_DURATION = timedelta(days=30)
 
+    # Rate-limit counters (login brute-force protection). memory:// is
+    # per-process, so with N gunicorn workers x M replicas the effective limit
+    # is N*M times the configured one. Point at a shared redis:// in production.
+    RATELIMIT_STORAGE_URI = os.environ.get('RATELIMIT_STORAGE_URI', 'memory://')
+    RATELIMIT_KEY_PREFIX = 'flexblankett'
+    # If the store is unreachable, keep limiting per-process instead of 500-ing.
+    RATELIMIT_IN_MEMORY_FALLBACK_ENABLED = True
+
     LDAP_ENABLED = os.environ.get('LDAP_ENABLED', 'false').lower() == 'true'
     LDAP_HOST = os.environ.get('LDAP_HOST', 'ipa.cname.se')
     LDAP_BASE_DN = os.environ.get('LDAP_BASE_DN', 'dc=cname,dc=se')

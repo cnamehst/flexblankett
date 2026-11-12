@@ -1,0 +1,22 @@
+# Never ship secrets, VCS data or dev tooling in the image
+.git
+.gitignore
+.gitea
+.github
+.env
+.env.*
+k8s/
+docker-compose.yml
+Dockerfile
+.dockerignore
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+tests/
+conftest.py
+requirements-dev.txt
+graphify-out/
+.claude/
+*.md
