@@ -2,6 +2,19 @@ import os
 from datetime import timedelta
 
 
+def _db_engine_options() -> dict:
+    """TLS to the database when DB_SSL_CA names a CA file: the server
+    certificate must chain to that CA and match the host name in DATABASE_URL.
+    Unset: plain connection, as before. Set but missing: refuse to start
+    rather than fall back to an unencrypted connection."""
+    ca = os.environ.get('DB_SSL_CA', '')
+    if not ca:
+        return {}
+    if not os.path.isfile(ca):
+        raise RuntimeError(f'DB_SSL_CA is set to {ca} but that file does not exist')
+    return {'connect_args': {'ssl': {'ca': ca}}}
+
+
 class Config:
     # No dev fallback: a known default key would let anyone forge sessions.
     SECRET_KEY = os.environ['SECRET_KEY']
@@ -10,6 +23,7 @@ class Config:
         'mysql+pymysql://flexuser:flexpass@localhost:3306/flexblankett'
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = _db_engine_options()
     MAX_CONTENT_LENGTH = 1 * 1024 * 1024  # 1 MB — prevents large body DoS
     WTF_CSRF_ENABLED = True
     SESSION_COOKIE_SECURE = True

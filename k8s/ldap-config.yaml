@@ -8,6 +8,9 @@ data:
   LDAP_HOST: "idm.cname.se"
   LDAP_BASE_DN: "dc=cname,dc=se"
   LDAP_CA_CERT: "/etc/ssl/certs/ipa-ca.pem"
+  # TLS to db1: the server certificate must chain to the IPA CA and match the
+  # host name. Needs the image that understands DB_SSL_CA; older images ignore it.
+  DB_SSL_CA: "/etc/ssl/certs/ipa-ca.pem"
 ---
 apiVersion: v1
 kind: ConfigMap

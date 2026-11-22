@@ -18,5 +18,18 @@ spec:
           envFrom:
             - secretRef:
                 name: flexblankett-secret
+          env:
+            # Same TLS setting as the app (ldap-config.yaml).
+            - name: DB_SSL_CA
+              value: "/etc/ssl/certs/ipa-ca.pem"
+          volumeMounts:
+            - name: ipa-ca
+              mountPath: /etc/ssl/certs/ipa-ca.pem
+              subPath: ipa-ca.pem
+              readOnly: true
+      volumes:
+        - name: ipa-ca
+          configMap:
+            name: flexblankett-ipa-ca
       restartPolicy: OnFailure
   backoffLimit: 5
