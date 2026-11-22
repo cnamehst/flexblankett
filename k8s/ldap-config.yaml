@@ -5,7 +5,7 @@ metadata:
   namespace: flexblankett
 data:
   LDAP_ENABLED: "true"
-  LDAP_HOST: "ipa.cname.se"
+  LDAP_HOST: "idm.cname.se"
   LDAP_BASE_DN: "dc=cname,dc=se"
   LDAP_CA_CERT: "/etc/ssl/certs/ipa-ca.pem"
 ---
