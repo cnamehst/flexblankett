@@ -46,13 +46,20 @@ def client_ip():
 # Checks of a local password (admin / service accounts) never reach the
 # directory, so they have their own counter: enough for normal use, far too
 # few to guess a password. Counted for successes too, nothing is given back.
+# Per side, like the directory attempts, so the internet cannot use up the
+# LAN's checks.
 LOCAL_PASSWORD_CHECKS = parse('10 per 10 minutes')
 
 
-def reserve_local_password_check(username):
-    """Take one local password check for this name; False when none is left.
-    Taken in one step before the password is compared."""
-    key = ('flexblankett', 'local-password-check', username.strip().lower()[:64])
+def reserve_local_password_check(user_id):
+    """Take one local password check for this account; False when none is
+    left. Taken in one step before the password is compared.
+
+    Counted on the account that was found, not on the text that was typed:
+    the database matches names loosely (case, accents, trailing spaces), so
+    many spellings find the same account and must share one counter.
+    """
+    key = ('flexblankett', 'local-password-check', _zone(), str(int(user_id)))
     try:
         return _attempts().hit(LOCAL_PASSWORD_CHECKS, *key)
     except Exception:

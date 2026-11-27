@@ -74,7 +74,7 @@ def login():
         if user and user.active and user.has_local_password:
             # Counted in one step before the comparison, so that requests at
             # the same moment cannot get more guesses than the limit.
-            if not reserve_local_password_check(username):
+            if not reserve_local_password_check(user.id):
                 return _throttled(username)
             if user.check_password(password):
                 login_user(user, remember=remember)

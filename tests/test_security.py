@@ -200,6 +200,36 @@ def test_local_password_checks_are_limited_per_name(app, monkeypatch):
         login(client, 'anna', 'wrong', addr=lan(i))
     assert len(checks) == 10
     assert login(client, 'anna', 'right', addr=lan(99)).status_code == 200   # refused
+    # The internet side has its own checks and is not affected.
+    assert login(client, 'anna', 'right', addr=wan(1)).status_code == 302
+
+
+def test_local_checks_are_counted_on_the_account_not_the_spelling(app, monkeypatch):
+    """MariaDB finds the same account for 'anna', 'ANNA', 'ánna', ... Stand in
+    for that here (sqlite compares exactly) and check that all spellings
+    share one counter."""
+    from app.auth import routes
+    from app.models import User as U
+    monkeypatch.setattr(routes, 'login_attempts_left', lambda u: True)
+    monkeypatch.setattr(routes, 'reserve_login_attempt', lambda u: False)
+    anna = U.query.filter_by(username='anna').first()
+
+    class LooseQuery:
+        def filter_by(self, **kw):
+            return self
+
+        def first(self):
+            return anna
+
+    monkeypatch.setattr(routes.User, 'query', LooseQuery())
+    checks = []
+    real = U.check_password
+    monkeypatch.setattr(U, 'check_password',
+                        lambda self, pw: checks.append(pw) or real(self, pw))
+    client = app.test_client()
+    for i in range(15):
+        login(client, f'spelling-{i}', 'wrong', addr=lan(i))
+    assert len(checks) == 10
 
 
 def test_attempt_is_taken_before_the_password_check(app, monkeypatch):
