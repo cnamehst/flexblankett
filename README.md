@@ -171,7 +171,7 @@ reverse proxies in front of Traefik. Traefik must trust the same addresses for
 they all share one rate-limit bucket.
 
 **Audit log.** Sent to the syslog server in `AUDIT_SYSLOG` (ConfigMap
-`flexblankett-ldap`; here Graylog on docker2, UDP 514), where it is kept; in
+`flexblankett-ldap`; here `syslog.cname.se`, UDP 514 = Graylog), where it is kept; in
 Graylog search for `source:flexblankett`. The same lines, starting with a
 timestamp and `AUDIT`, are in the container log, which is lost whenever the
 pod is replaced. Events: `login_ok`, `login_failed`, `login_throttled`, `login_denied`, `logout`,

@@ -133,7 +133,9 @@ spec:
         - port: 6379
           protocol: TCP
 ---
-# Out: the audit log to Graylog (docker2.cname.se, syslog over UDP).
+# Out: the audit log to syslog.cname.se (Graylog), syslog over UDP. A network
+# policy cannot name a host: the address below is what syslog.cname.se
+# resolved to on 2026-11-27 and must be changed here if that name moves.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
