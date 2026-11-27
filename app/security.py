@@ -11,13 +11,15 @@ audit_log = logging.getLogger('flexblankett.audit')
 
 # The directory (IPA) locks an account for 10 minutes after 6 failed logins in
 # a row with less than 60 s between them, and that lock applies to every
-# service, not only this one. Staying below it here means the login form
-# cannot be used to lock somebody's account: after 4 failures for a user name
-# the app stops asking the directory for 10 minutes.
-LOGIN_FAILURE_LIMIT = parse('4 per 10 minutes')
-# Internet and LAN are counted separately (see _failure_keys), so on top of
-# that the two together are capped at 5: never 6 failures for one name.
-LOGIN_FAILURE_TOTAL = parse('5 per 10 minutes')
+# service, not only this one. The login form must not be usable to lock
+# somebody's account, so the number of attempts that reach the directory for
+# one user name is kept below 6: 3 from the internet plus 2 from the LAN per
+# 10 minutes. The two sides have separate budgets, so somebody on the internet
+# who knows a user name can use up the internet side only.
+LOGIN_ATTEMPTS = {
+    'wan': parse('3 per 10 minutes'),
+    'lan': parse('2 per 10 minutes'),
+}
 
 
 def client_ip():
@@ -46,46 +48,40 @@ def _zone():
     return 'wan' if (request.remote_addr or '') in current_app.config['TRUSTED_PROXIES'] else 'lan'
 
 
-def _failure_keys(username):
-    """(limit, key) pairs that a failed login for this name counts against.
-
-    Per side, internet or LAN: somebody on the internet who knows a user name
-    can use up the internet side (4) but not the LAN side, so the user still
-    gets in from the LAN with the right password. And the two sides together
-    (5), so that what reaches the directory stays below its lock threshold
-    whatever the mix.
-    """
-    name = username.strip().lower()[:64]
-    return (
-        (LOGIN_FAILURE_LIMIT, ('flexblankett', 'login-failure', _zone(), name)),
-        (LOGIN_FAILURE_TOTAL, ('flexblankett', 'login-failure', 'total', name)),
-    )
+def _attempt_key(zone, username):
+    return ('flexblankett', 'login-attempt', zone, username.strip().lower()[:64])
 
 
-def _failures():
+def _attempts():
     from app import limiter
     return MovingWindowRateLimiter(limiter.storage)
 
 
-def login_blocked(username):
-    """True when this user name has used up its failed logins."""
+def reserve_login_attempt(username):
+    """Take one attempt for this user name; False when none is left.
+
+    Taken before the password is checked, in one step in the counter store.
+    Checking first and counting afterwards would let several requests at the
+    same moment all pass the check.
+    """
+    zone = _zone()
     try:
-        counter = _failures()
-        return not all(counter.test(limit, *key) for limit, key in _failure_keys(username))
+        return _attempts().hit(LOGIN_ATTEMPTS[zone], *_attempt_key(zone, username))
     except Exception:
         # Counter store unreachable: let the login through, the limit per
         # address still applies.
-        log.exception('login failure counter unavailable')
-        return False
+        log.exception('login attempt counter unavailable')
+        return True
 
 
-def record_login_failure(username):
+def login_succeeded(username):
+    """A correct password gives the attempts back, on both sides (the
+    directory resets its own failure count on success too)."""
     try:
-        counter = _failures()
-        for limit, key in _failure_keys(username):
-            counter.hit(limit, *key)
+        for zone, limit in LOGIN_ATTEMPTS.items():
+            _attempts().clear(limit, *_attempt_key(zone, username))
     except Exception:
-        log.exception('login failure counter unavailable')
+        log.exception('login attempt counter unavailable')
 
 
 def audit(event, **fields):

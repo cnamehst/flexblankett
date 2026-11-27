@@ -156,14 +156,12 @@ The user lands on a "no employee profile" page. An admin must:
 ## Security notes
 
 **Login throttling.** Besides the limit per client address (5 per 10 s, 20 per
-minute), failed logins are counted per user name: after 4 failures in 10
-minutes the app stops asking the directory for that name until the window has
-passed. This keeps the login form from being used to lock an IPA account (IPA
-locks after 6 failures in a row, for every service). The price: somebody who
-knows a user name can keep that user out of *this app*, but only on the
-side they come from: failures from the internet and from the LAN are counted
-separately (4 each), with a cap of 5 for the two together so that IPA's
-threshold is never reached.
+minute), login attempts are counted per user name: 3 from the internet and 2
+from the LAN per 10 minutes, taken before the directory is asked and given
+back by a correct password. So at most 5 failures for a name reach IPA, which
+locks an account after 6 in a row, for every service. The price: somebody who
+knows a user name can keep that user out of *this app*, but only on the side
+they come from; the internet and the LAN have separate budgets.
 
 **Client address.** `TRUSTED_PROXIES` (ConfigMap `flexblankett-ldap`) lists
 reverse proxies in front of Traefik. Traefik must trust the same addresses for

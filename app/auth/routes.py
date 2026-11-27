@@ -4,7 +4,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app.auth import bp
 from app.models import User
 from app import db, limiter
-from app.security import audit, login_blocked, record_login_failure
+from app.security import audit, login_succeeded, reserve_login_attempt
 
 
 def _try_ldap(username, password):
@@ -54,8 +54,8 @@ def login():
         password = request.form.get('password', '')
         remember = 'remember' in request.form
 
-        # Checked before the directory is asked, see app.security.
-        if username and login_blocked(username):
+        # Taken before the directory is asked, see app.security.
+        if username and not reserve_login_attempt(username):
             audit('login_throttled', username=_name_for_log(username))
             flash('För många misslyckade försök. Vänta 10 minuter och försök igen.', 'danger')
             return render_template('auth/login.html')
@@ -63,6 +63,7 @@ def login():
         # Try LDAP first — auto-provisions user row on first login
         attrs = _try_ldap(username, password)
         if attrs is not None:
+            login_succeeded(username)
             user = User.query.filter_by(username=username).first()
             if user is None:
                 user = User(username=username, email=attrs['email'], password_hash='!ldap')
@@ -80,11 +81,10 @@ def login():
         user = User.query.filter_by(username=username).first()
         if user and user.active and user.check_password(password):
             login_user(user, remember=remember)
+            login_succeeded(username)
             audit('login_ok', username=username, method='local')
             return redirect(_safe_next())
 
-        if username:
-            record_login_failure(username)
         audit('login_failed', username=_name_for_log(username))
         flash('Felaktigt användarnamn eller lösenord.', 'danger')
 

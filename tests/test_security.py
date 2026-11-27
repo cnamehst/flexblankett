@@ -88,60 +88,96 @@ def test_rate_limit_is_per_internet_client(app):
 
 
 # --- login throttling per user name -------------------------------------------
+# 3 attempts from the internet and 2 from the LAN per 10 minutes.
 
-def test_fifth_attempt_is_refused_even_with_the_right_password(app, audit_lines):
+def wan(i):
+    return f'203.0.113.{i}, {PROXY}'
+
+
+def lan(i):
+    return f'192.168.1.{i}'
+
+
+def test_lan_third_attempt_is_refused_even_with_the_right_password(app, audit_lines):
     client = app.test_client()
     # Different addresses, so the limit per address is not what stops it.
-    for i in range(4):
-        assert login(client, 'anna', 'wrong', addr=f'10.0.0.{i}').status_code == 200
-    response = login(client, 'anna', 'right', addr='10.0.0.99')
+    for i in range(2):
+        assert login(client, 'anna', 'wrong', addr=lan(i)).status_code == 200
+    response = login(client, 'anna', 'right', addr=lan(99))
     assert response.status_code == 200          # login page again, no redirect
     assert 'För många misslyckade försök' in response.get_data(as_text=True)
-    assert sum('login_failed' in line for line in audit_lines) == 4
-    assert any('login_throttled' in line for line in audit_lines)
+    assert sum(line.startswith('login_failed') for line in audit_lines) == 2
+    assert sum(line.startswith('login_throttled') for line in audit_lines) == 1
+
+
+def test_internet_fourth_attempt_is_refused(app):
+    client = app.test_client()
+    for i in range(3):
+        login(client, 'anna', 'wrong', addr=wan(i))
+    assert 'För många' in login(client, 'anna', 'right', addr=wan(99)).get_data(as_text=True)
 
 
 def test_throttle_is_case_insensitive(app):
     client = app.test_client()
-    for i, name in enumerate(('anna', 'Anna', 'ANNA', 'aNNa')):
-        login(client, name, 'wrong', addr=f'10.0.1.{i}')
-    assert 'För många' in login(client, 'anna', 'right', addr='10.0.1.9').get_data(as_text=True)
+    for i, name in enumerate(('anna', 'ANNA')):
+        login(client, name, 'wrong', addr=lan(i))
+    assert 'För många' in login(client, 'aNNa', 'right', addr=lan(9)).get_data(as_text=True)
 
 
 def test_other_user_is_not_affected(app):
     client = app.test_client()
-    for i in range(4):
-        login(client, 'anna', 'wrong', addr=f'10.0.2.{i}')
-    assert login(client, 'bo', 'right', addr='10.0.2.9').status_code == 302
+    for i in range(2):
+        login(client, 'anna', 'wrong', addr=lan(i))
+    assert login(client, 'bo', 'right', addr=lan(9)).status_code == 302
 
 
 def test_failures_from_the_internet_do_not_block_the_lan(app):
     client = app.test_client()
-    for i in range(4):
-        login(client, 'anna', 'wrong', addr=f'203.0.113.{i}, {PROXY}')
-    blocked = login(client, 'anna', 'right', addr=f'203.0.113.99, {PROXY}')
-    assert 'För många' in blocked.get_data(as_text=True)
-    assert login(client, 'anna', 'right', addr='192.168.1.50').status_code == 302
+    for i in range(6):
+        login(client, 'anna', 'wrong', addr=wan(i))
+    # The LAN side still has both its attempts: one typo, then in.
+    assert login(client, 'anna', 'wrong', addr=lan(1)).status_code == 200
+    assert login(client, 'anna', 'right', addr=lan(2)).status_code == 302
 
 
-def test_both_sides_together_stay_below_the_directory_lock(app, audit_lines):
+def test_never_six_password_checks_for_one_name(app, audit_lines):
     client = app.test_client()
-    for i in range(4):                                   # internet side used up
-        login(client, 'anna', 'wrong', addr=f'203.0.113.{i}, {PROXY}')
-    login(client, 'anna', 'wrong', addr='192.168.1.50')  # one more from the LAN: 5
-    for i in range(3):                                   # refused on both sides now
-        login(client, 'anna', 'wrong', addr=f'192.168.1.{60 + i}')
-        login(client, 'anna', 'wrong', addr=f'203.0.113.{60 + i}, {PROXY}')
-    # Only five attempts got as far as a password check.
+    for i in range(10):
+        login(client, 'anna', 'wrong', addr=wan(i))
+        login(client, 'anna', 'wrong', addr=lan(i))
+    # 3 from the internet + 2 from the LAN got as far as a password check.
     assert sum(line.startswith('login_failed') for line in audit_lines) == 5
-    assert sum(line.startswith('login_throttled') for line in audit_lines) == 6
+    assert sum(line.startswith('login_throttled') for line in audit_lines) == 15
 
 
-def test_three_failures_then_success(app):
+def test_success_gives_the_attempts_back(app):
     client = app.test_client()
-    for i in range(3):
-        login(client, 'anna', 'wrong', addr=f'10.0.3.{i}')
-    assert login(client, 'anna', 'right', addr='10.0.3.9').status_code == 302
+    for round_ in range(3):
+        assert login(client, 'anna', 'wrong', addr=lan(round_)).status_code == 200
+        assert login(client, 'anna', 'right', addr=lan(50 + round_)).status_code == 302
+        client.post('/logout')
+
+
+def test_attempt_is_taken_before_the_password_check(app, monkeypatch):
+    """Requests at the same moment must not all slip past the limit: the
+    attempt is counted when the request starts, not after the check."""
+    from app.auth import routes
+    from app.security import reserve_login_attempt
+
+    seen = []
+
+    def check_then_record(username, password):
+        # While "the directory is being asked", is the attempt already counted?
+        with app.test_request_context('/login', environ_base={'REMOTE_ADDR': '192.168.1.77'}):
+            seen.append(reserve_login_attempt(username))
+        return None
+
+    monkeypatch.setattr(routes, '_try_ldap', check_then_record)
+    login(app.test_client(), 'anna', 'wrong', addr=lan(1))
+    # LAN budget is 2: the request took one, the probe inside took the second,
+    # so a third is refused.
+    with app.test_request_context('/login', environ_base={'REMOTE_ADDR': '192.168.1.78'}):
+        assert seen == [True] and reserve_login_attempt('anna') is False
 
 
 # --- audit log ----------------------------------------------------------------
@@ -163,7 +199,7 @@ def test_typed_text_cannot_add_log_lines(app, audit_lines):
 def test_text_that_is_not_an_account_is_not_logged(app, audit_lines):
     # A password typed in the user name field.
     client = app.test_client()
-    for i in range(5):
+    for i in range(4):
         login(client, 'MyPassw0rd', 'x', addr=f'10.0.4.{i}')
     text = '\n'.join(audit_lines)
     assert 'MyPassw0rd' not in text
