@@ -4,6 +4,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app.auth import bp
 from app.models import User
 from app import db, limiter
+from app.security import audit, login_blocked, record_login_failure
 
 
 def _try_ldap(username, password):
@@ -42,6 +43,12 @@ def login():
         password = request.form.get('password', '')
         remember = 'remember' in request.form
 
+        # Checked before the directory is asked, see app.security.
+        if username and login_blocked(username):
+            audit('login_throttled', username=username)
+            flash('För många misslyckade försök. Vänta 10 minuter och försök igen.', 'danger')
+            return render_template('auth/login.html')
+
         # Try LDAP first — auto-provisions user row on first login
         attrs = _try_ldap(username, password)
         if attrs is not None:
@@ -52,7 +59,9 @@ def login():
                 db.session.commit()
             if user.active:
                 login_user(user, remember=remember)
+                audit('login_ok', username=username, method='ldap')
                 return redirect(_safe_next())
+            audit('login_denied', username=username, reason='inactive')
             flash('Kontot är inaktiverat.', 'danger')
             return render_template('auth/login.html')
 
@@ -60,8 +69,12 @@ def login():
         user = User.query.filter_by(username=username).first()
         if user and user.active and user.check_password(password):
             login_user(user, remember=remember)
+            audit('login_ok', username=username, method='local')
             return redirect(_safe_next())
 
+        if username:
+            record_login_failure(username)
+        audit('login_failed', username=username)
         flash('Felaktigt användarnamn eller lösenord.', 'danger')
 
     return render_template('auth/login.html')
@@ -70,5 +83,6 @@ def login():
 @bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
+    audit('logout')
     logout_user()
     return redirect(url_for('auth.login'))

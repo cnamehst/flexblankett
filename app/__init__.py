@@ -4,28 +4,39 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 db = SQLAlchemy()
 login_manager = LoginManager()
 csrf = CSRFProtect()
-limiter = Limiter(key_func=get_remote_address, default_limits=[])
 
 
-APP_VERSION = "1.0.2"
+def _rate_limit_key():
+    from app.security import client_ip
+    return client_ip()
+
+
+limiter = Limiter(key_func=_rate_limit_key, default_limits=[])
+
+
+APP_VERSION = "1.0.3"
 
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object('config.Config')
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+    # One proxy hop is trusted for X-Forwarded-*: Traefik. See app.security.client_ip
+    # for how the public reverse proxy in front of Traefik is handled.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.jinja_env.globals['APP_VERSION'] = APP_VERSION
 
     db.init_app(app)
     login_manager.init_app(app)
     csrf.init_app(app)
     limiter.init_app(app)
+
+    from app.security import init_audit_log
+    init_audit_log()
 
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Logga in för att fortsätta.'

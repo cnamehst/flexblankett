@@ -1,0 +1,134 @@
+# Which network connections the pods in this namespace may make and accept.
+# Without these, a pod can reach anything in the cluster and on the LAN, and
+# any other pod can connect straight to port 5000, past Traefik.
+#
+# Same pattern as the namespaces mantorppark-poe and pixelcom-control:
+# everything is closed first, then one policy per connection that is needed.
+# Health checks from the kubelet come from the node itself and are not
+# affected (same as in those namespaces).
+#
+# Apply: kubectl apply -f k8s/networkpolicy.yaml
+# Check afterwards: pods stay Ready, login works (LDAP + database), and the
+# log shows no "in-memory storage" fallback (redis).
+# Undo:  kubectl delete -f k8s/networkpolicy.yaml
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: flexblankett
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# In: only from Traefik, to the app port.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web-ingress-from-traefik
+  namespace: flexblankett
+spec:
+  podSelector:
+    matchLabels:
+      app: flexblankett
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 5000
+          protocol: TCP
+---
+# Out: name lookups.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-dns
+  namespace: flexblankett
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+---
+# Out: the database (db1.cname.se). Also used by the seed job.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-mariadb
+  namespace: flexblankett
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.168.209.2/32
+      ports:
+        - port: 3306
+          protocol: TCP
+---
+# Out: logins against the directory (idm.cname.se, LDAPS).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-ldap
+  namespace: flexblankett
+spec:
+  podSelector:
+    matchLabels:
+      app: flexblankett
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.168.208.134/32
+      ports:
+        - port: 636
+          protocol: TCP
+---
+# Out: the shared redis that holds the rate-limit counters.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-redis
+  namespace: flexblankett
+spec:
+  podSelector:
+    matchLabels:
+      app: flexblankett
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: redis
+          podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - port: 6379
+          protocol: TCP

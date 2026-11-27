@@ -42,6 +42,13 @@ class Config:
     # If the store is unreachable, keep limiting per-process instead of 500-ing.
     RATELIMIT_IN_MEMORY_FALLBACK_ENABLED = True
 
+    # Addresses of reverse proxies in front of Traefik (comma separated), as
+    # Traefik sees them. Needed to tell internet clients apart; Traefik must
+    # also trust the same addresses for X-Forwarded-For.
+    TRUSTED_PROXIES = frozenset(
+        a.strip() for a in os.environ.get('TRUSTED_PROXIES', '').split(',') if a.strip()
+    )
+
     LDAP_ENABLED = os.environ.get('LDAP_ENABLED', 'false').lower() == 'true'
     LDAP_HOST = os.environ.get('LDAP_HOST', 'idm.cname.se')
     LDAP_BASE_DN = os.environ.get('LDAP_BASE_DN', 'dc=cname,dc=se')

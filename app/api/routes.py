@@ -6,6 +6,7 @@ from flask import request, jsonify, g
 from app import db, limiter
 from app.api import bp
 from app.models import ApiKey, TimeEntry, MonthReference, User
+from app.security import audit
 from app.calculations import calc_entry, calc_month_summary, MONTH_NAMES_SV
 
 
@@ -20,6 +21,7 @@ def _api_key_required(f):
                    .filter(ApiKey.key_hash == key_hash, ApiKey.active.is_(True),
                            User.active.is_(True)).first())
         if not api_key:
+            audit('api_key_rejected', path=request.path)
             return jsonify({'error': 'Invalid or revoked API key'}), 401
         api_key.last_used_at = datetime.utcnow()
         db.session.commit()

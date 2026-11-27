@@ -153,6 +153,34 @@ The user lands on a "no employee profile" page. An admin must:
 
 ---
 
+## Security notes
+
+**Login throttling.** Besides the limit per client address (5 per 10 s, 20 per
+minute), failed logins are counted per user name: after 4 failures in 10
+minutes the app stops asking the directory for that name until the window has
+passed. This keeps the login form from being used to lock an IPA account (IPA
+locks after 6 failures in a row, for every service). The price: somebody who
+knows a user name can keep that user out of *this app*.
+
+**Client address.** `TRUSTED_PROXIES` (ConfigMap `flexblankett-ldap`) lists
+reverse proxies in front of Traefik. Traefik must trust the same addresses for
+`X-Forwarded-For`; otherwise every internet client looks like the proxy and
+they all share one rate-limit bucket.
+
+**Audit log.** Lines starting with a timestamp and `AUDIT` in the container
+log: `login_ok`, `login_failed`, `login_throttled`, `login_denied`, `logout`,
+`admin_denied`, `user_created`, `user_edited` (what changed, never the
+password), `user_deleted`, `api_key_created`, `api_key_revoked`,
+`api_key_rejected`. Each has the acting user and the client address.
+
+```bash
+kubectl logs -n flexblankett deploy/flexblankett --all-containers --prefix | grep AUDIT
+```
+
+**Network policy.** `k8s/networkpolicy.yaml` closes the namespace and opens
+only Traefik in, and DNS, database, LDAPS and redis out. Not part of the
+numbered deployment steps; apply it separately and check login afterwards.
+
 ## Schema migrations
 
 There is no Alembic migration setup. When a new column is added, run the ALTER TABLE directly in the running pod:

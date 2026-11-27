@@ -11,6 +11,11 @@ data:
   # TLS to db1: the server certificate must chain to the IPA CA and match the
   # host name. Needs the image that understands DB_SSL_CA; older images ignore it.
   DB_SSL_CA: "/etc/ssl/certs/ipa-ca.pem"
+  # The public reverse proxy (jarvis) as Traefik sees it. With this the app
+  # tells internet clients apart for rate limits and the audit log. Traefik
+  # must trust the same address (forwardedHeaders.trustedIPs, set by Puppet),
+  # otherwise every internet client still looks like jarvis.
+  TRUSTED_PROXIES: "192.168.203.9"
 ---
 apiVersion: v1
 kind: ConfigMap

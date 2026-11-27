@@ -4,6 +4,7 @@ from flask_login import login_required, current_user
 from app import db
 from app.admin import bp
 from app.models import User, Employee
+from app.security import audit
 
 
 def admin_required(f):
@@ -11,6 +12,7 @@ def admin_required(f):
     @login_required
     def decorated(*args, **kwargs):
         if not current_user.is_admin:
+            audit('admin_denied', path=request.path)
             flash('Kräver admin-behörighet.', 'danger')
             return redirect(url_for('main.index'))
         return f(*args, **kwargs)
@@ -63,6 +65,7 @@ def new_user():
             base_year=base_year,
         ))
         db.session.commit()
+        audit('user_created', username=username, role=role)
         flash(f'Användare {username} skapad.', 'success')
         return redirect(url_for('admin.users'))
 
@@ -87,10 +90,14 @@ def edit_user(user_id):
             return render_template('admin/user_form.html', action='edit',
                                    edit_user=user, form_data=request.form, prefill={})
 
+        before = {'username': user.username, 'email': user.email,
+                  'role': user.role, 'active': user.active}
         user.username = new_username
         user.email = new_email
         user.role = request.form.get('role', user.role)
         user.active = 'active' in request.form
+        after = {'username': user.username, 'email': user.email,
+                 'role': user.role, 'active': user.active}
 
         password = request.form.get('password', '').strip()
         if password:
@@ -109,6 +116,9 @@ def edit_user(user_id):
         user.employee.base_year = int(request.form.get('base_year', 2026) or 2026)
 
         db.session.commit()
+        changed = {k: [before[k], after[k]] for k in before if before[k] != after[k]}
+        audit('user_edited', user_id=user.id, username=user.username,
+              changed=changed, password_set=bool(password))
         flash('Sparat.', 'success')
         return redirect(url_for('admin.users'))
 
@@ -136,5 +146,6 @@ def delete_user(user_id):
     username = user.username
     db.session.delete(user)
     db.session.commit()
+    audit('user_deleted', user_id=user_id, username=username)
     flash(f'Användare {username} borttagen.', 'success')
     return redirect(url_for('admin.users'))

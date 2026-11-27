@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 from app import db
 from app.main import bp
 from app.models import TimeEntry, MonthReference, ApiKey
+from app.security import audit
 from app.calculations import (
     calc_entry, calc_month_summary,
     MONTH_NAMES_SV, WEEKDAY_NAMES_SV, SPECIAL_STATUSES,
@@ -276,6 +277,7 @@ def create_api_key():
     key = ApiKey(user_id=current_user.id, name=name, key_hash=key_hash)
     db.session.add(key)
     db.session.commit()
+    audit('api_key_created', key_id=key.id, name=name)
     session['new_api_key'] = raw
     return redirect(url_for('main.api_keys'))
 
@@ -289,6 +291,7 @@ def revoke_api_key(key_id):
         return redirect(url_for('main.api_keys'))
     key.active = False
     db.session.commit()
+    audit('api_key_revoked', key_id=key.id, name=key.name)
     flash(f'Nyckel "{key.name}" återkallad.', 'success')
     return redirect(url_for('main.api_keys'))
 
