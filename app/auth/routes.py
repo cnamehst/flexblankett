@@ -4,7 +4,9 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app.auth import bp
 from app.models import User
 from app import db, limiter
-from app.security import audit, login_succeeded, reserve_login_attempt
+from app.security import (
+    audit, directory_login_succeeded, login_attempts_left, reserve_login_attempt,
+)
 
 
 def _try_ldap(username, password):
@@ -33,6 +35,12 @@ def _name_for_log(username):
     return '<not an account here>'
 
 
+def _throttled(username):
+    audit('login_throttled', username=_name_for_log(username))
+    flash('För många misslyckade försök. Vänta 10 minuter och försök igen.', 'danger')
+    return render_template('auth/login.html')
+
+
 def _safe_next():
     next_url = request.args.get('next', '')
     # Only same-site absolute paths; reject //host and backslash tricks
@@ -54,16 +62,28 @@ def login():
         password = request.form.get('password', '')
         remember = 'remember' in request.form
 
-        # Taken before the directory is asked, see app.security.
-        if username and not reserve_login_attempt(username):
-            audit('login_throttled', username=_name_for_log(username))
-            flash('För många misslyckade försök. Vänta 10 minuter och försök igen.', 'danger')
-            return render_template('auth/login.html')
+        if username and not login_attempts_left(username):
+            return _throttled(username)
 
-        # Try LDAP first — auto-provisions user row on first login
+        # Local password first (admin / service accounts). A match never
+        # touches the directory, and does not give attempts back: earlier
+        # failures for this name may have reached the directory, and only a
+        # successful bind there resets its count.
+        user = User.query.filter_by(username=username).first()
+        if user and user.active and user.check_password(password):
+            login_user(user, remember=remember)
+            audit('login_ok', username=username, method='local')
+            return redirect(_safe_next())
+
+        # Everything below may send a bind to the directory, so the attempt
+        # is taken first, in one step (see app.security).
+        if username and not reserve_login_attempt(username):
+            return _throttled(username)
+
+        # LDAP — auto-provisions user row on first login
         attrs = _try_ldap(username, password)
         if attrs is not None:
-            login_succeeded(username)
+            directory_login_succeeded(username)
             user = User.query.filter_by(username=username).first()
             if user is None:
                 user = User(username=username, email=attrs['email'], password_hash='!ldap')
@@ -76,14 +96,6 @@ def login():
             audit('login_denied', username=username, reason='inactive')
             flash('Kontot är inaktiverat.', 'danger')
             return render_template('auth/login.html')
-
-        # Fallback: local password hash (admin / service accounts)
-        user = User.query.filter_by(username=username).first()
-        if user and user.active and user.check_password(password):
-            login_user(user, remember=remember)
-            login_succeeded(username)
-            audit('login_ok', username=username, method='local')
-            return redirect(_safe_next())
 
         audit('login_failed', username=_name_for_log(username))
         flash('Felaktigt användarnamn eller lösenord.', 'danger')

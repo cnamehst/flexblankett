@@ -57,6 +57,17 @@ def _attempts():
     return MovingWindowRateLimiter(limiter.storage)
 
 
+def login_attempts_left(username):
+    """False when this user name has no attempt left on this side. Does not
+    take one."""
+    zone = _zone()
+    try:
+        return _attempts().test(LOGIN_ATTEMPTS[zone], *_attempt_key(zone, username))
+    except Exception:
+        log.exception('login attempt counter unavailable')
+        return True
+
+
 def reserve_login_attempt(username):
     """Take one attempt for this user name; False when none is left.
 
@@ -74,9 +85,10 @@ def reserve_login_attempt(username):
         return True
 
 
-def login_succeeded(username):
-    """A correct password gives the attempts back, on both sides (the
-    directory resets its own failure count on success too)."""
+def directory_login_succeeded(username):
+    """A successful bind gives the attempts back, on both sides: the directory
+    resets its own failure count at that moment too. Only for that case; a
+    login that did not bind successfully must not reset anything."""
     try:
         for zone, limit in LOGIN_ATTEMPTS.items():
             _attempts().clear(limit, *_attempt_key(zone, username))

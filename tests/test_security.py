@@ -150,12 +150,38 @@ def test_never_six_password_checks_for_one_name(app, audit_lines):
     assert sum(line.startswith('login_throttled') for line in audit_lines) == 15
 
 
-def test_success_gives_the_attempts_back(app):
+def test_directory_success_gives_the_attempts_back(app, monkeypatch):
+    from app.auth import routes
+    monkeypatch.setattr(routes, '_try_ldap',
+                        lambda u, p: {'email': 'cia@example.com'} if p == 'ldap-right' else None)
     client = app.test_client()
     for round_ in range(3):
-        assert login(client, 'anna', 'wrong', addr=lan(round_)).status_code == 200
-        assert login(client, 'anna', 'right', addr=lan(50 + round_)).status_code == 302
+        assert login(client, 'cia', 'wrong', addr=lan(round_)).status_code == 200
+        assert login(client, 'cia', 'ldap-right', addr=lan(50 + round_)).status_code == 302
         client.post('/logout')
+
+
+def test_local_login_sends_nothing_to_the_directory(app, monkeypatch):
+    from app.auth import routes
+    binds = []
+    monkeypatch.setattr(routes, '_try_ldap', lambda u, p: binds.append(u))
+    assert login(app.test_client(), 'anna', 'right', addr=lan(1)).status_code == 302
+    assert binds == []
+
+
+def test_local_success_does_not_give_attempts_back(app, monkeypatch):
+    """Failed binds for the name stay counted when a local password matches,
+    so local logins cannot be used to send failure after failure to the
+    directory."""
+    from app.auth import routes
+    binds = []
+    monkeypatch.setattr(routes, '_try_ldap', lambda u, p: binds.append(u))
+    client = app.test_client()
+    for round_ in range(5):
+        login(client, 'anna', 'wrong', addr=lan(round_))
+        if login(client, 'anna', 'right', addr=lan(50 + round_)).status_code == 302:
+            client.post('/logout')
+    assert len(binds) == 2      # the LAN budget, no more
 
 
 def test_attempt_is_taken_before_the_password_check(app, monkeypatch):
