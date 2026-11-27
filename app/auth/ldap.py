@@ -17,7 +17,8 @@ def ldap_authenticate(host, base_dn, ca_cert, username, password, required_group
     cn=<required_group>,cn=groups,cn=accounts,<base_dn> or None is returned.
     """
     if not _SAFE_USERNAME.match(username):
-        log.info('LDAP: rejected username with disallowed characters: %r', username)
+        # The text itself is not logged: people type passwords in this field.
+        log.info('LDAP: rejected a user name with disallowed characters')
         return None
 
     user_dn = f'uid={username},cn=users,cn=accounts,{base_dn}'
@@ -28,7 +29,9 @@ def ldap_authenticate(host, base_dn, ca_cert, username, password, required_group
         conn = Connection(server, user=user_dn, password=password)
 
         if not conn.bind():
-            log.info('LDAP bind failed for %s: %s', username, conn.result)
+            # Who it was for is in the audit log (login_failed), and only if
+            # the name is an account here.
+            log.info('LDAP bind failed: %s', conn.result.get('description'))
             return None
 
         if required_group:
@@ -61,5 +64,5 @@ def ldap_authenticate(host, base_dn, ca_cert, username, password, required_group
         return {'email': email}
 
     except Exception:
-        log.exception('LDAP error authenticating %s', username)
+        log.exception('LDAP error during authentication')
         return None

@@ -170,9 +170,16 @@ reverse proxies in front of Traefik. Traefik must trust the same addresses for
 `X-Forwarded-For`; otherwise every internet client looks like the proxy and
 they all share one rate-limit bucket.
 
-**Audit log.** Sent to the syslog server in `AUDIT_SYSLOG` (ConfigMap
-`flexblankett-ldap`; here `syslog.cname.se`, UDP 514 = Graylog), where it is kept; in
-Graylog search for `source:flexblankett`. The same lines, starting with a
+**Logs.** Everything is sent to the syslog server in `SYSLOG_TARGET`
+(ConfigMap `flexblankett-ldap`; here `syslog.cname.se`, UDP 514 = Graylog),
+where it is kept: the audit log, the app's own log lines, and gunicorn's
+start/error/access log (`GUNICORN_CMD_ARGS` in the same ConfigMap). In
+Graylog search for `source:flexblankett` (app and audit; audit lines contain
+`AUDIT`) and `source:gunicorn.flexblankett*` (gunicorn, its own format). The
+same lines are in the container log, which is lost whenever the pod is
+replaced.
+
+**Audit log.** Lines with a
 timestamp and `AUDIT`, are in the container log, which is lost whenever the
 pod is replaced. Events: `login_ok`, `login_failed`, `login_throttled`, `login_denied`, `logout`,
 `admin_denied`, `user_created`, `user_edited` (what changed, never the

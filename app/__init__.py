@@ -35,8 +35,8 @@ def create_app():
     csrf.init_app(app)
     limiter.init_app(app)
 
-    from app.security import init_audit_log
-    init_audit_log(app.config['AUDIT_SYSLOG'])
+    from app.security import init_logging
+    init_logging(app.config['SYSLOG_TARGET'])
 
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Logga in för att fortsätta.'

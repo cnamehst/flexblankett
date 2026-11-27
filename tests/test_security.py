@@ -276,6 +276,26 @@ def test_syslog_message_is_rfc5424_with_utc_time_and_program_name():
     assert text.endswith("AUDIT - login_ok actor='bo'")
 
 
+def test_other_log_lines_carry_the_logger_name_and_the_traceback():
+    from app.security import _Rfc5424
+    try:
+        raise RuntimeError('boom')
+    except RuntimeError:
+        import sys
+        record = logging.LogRecord('app.auth.ldap', logging.ERROR, __file__, 1,
+                                   'LDAP error during authentication', (), sys.exc_info())
+    text = _Rfc5424().format(record)
+    assert ' app.auth.ldap - LDAP error during authentication' in text
+    assert 'RuntimeError: boom' in text
+
+
+def test_ldap_module_does_not_log_typed_text(app, caplog):
+    from app.auth.ldap import ldap_authenticate
+    with caplog.at_level(logging.INFO, logger='app.auth.ldap'):
+        assert ldap_authenticate('ldap.invalid', 'dc=x', '/nonexistent', 'My Passw0rd!', 'x') is None
+    assert 'Passw0rd' not in caplog.text and 'rejected a user name' in caplog.text
+
+
 def test_audit_lines_are_sent_as_one_udp_datagram_each():
     import socket
     from app.security import _syslog_handler
@@ -298,10 +318,10 @@ def test_audit_lines_are_sent_as_one_udp_datagram_each():
 def test_unusable_syslog_setting_does_not_stop_the_app(monkeypatch):
     from app import security
     monkeypatch.setattr(security.audit_log, 'handlers', [])
-    security.init_audit_log('no-port-here')
+    security.init_logging('no-port-here')
     assert len(security.audit_log.handlers) == 1     # container log only
     monkeypatch.setattr(security.audit_log, 'handlers', [])
-    security.init_audit_log('name.that.does.not.exist.invalid:514')
+    security.init_logging('name.that.does.not.exist.invalid:514')
     assert len(security.audit_log.handlers) >= 1
 
 

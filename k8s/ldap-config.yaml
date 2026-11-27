@@ -16,9 +16,14 @@ data:
   # must trust the same address (forwardedHeaders.trustedIPs, set by Puppet),
   # otherwise every internet client still looks like jarvis.
   TRUSTED_PROXIES: "192.168.203.9"
-  # Audit log (logins, admin changes, API keys) to Graylog, syslog over UDP.
-  # The container log loses it whenever the pod is replaced.
-  AUDIT_SYSLOG: "syslog.cname.se:514"
+  # All logs go to syslog.cname.se (syslog over UDP), which keeps them; the
+  # container log loses them whenever the pod is replaced.
+  # SYSLOG_TARGET: the audit log (logins, admin changes, API keys) and
+  # everything else the app logs.
+  SYSLOG_TARGET: "syslog.cname.se:514"
+  # gunicorn's own logs (start, worker problems, and the access log) are sent
+  # by gunicorn itself; "--access-logfile -" switches the access log on.
+  GUNICORN_CMD_ARGS: "--log-syslog --log-syslog-to udp://syslog.cname.se:514 --log-syslog-prefix flexblankett --access-logfile -"
 ---
 apiVersion: v1
 kind: ConfigMap

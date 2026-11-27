@@ -138,18 +138,27 @@ def audit(event, **fields):
     audit_log.info('%s actor=%r ip=%s %s', event, actor, ip, details)
 
 
+MAX_SYSLOG_BYTES = 8000
+
+
 class _Rfc5424(logging.Formatter):
     """Syslog message with its own time (UTC, with offset), host and program
-    name, so the log server does not have to guess any of them."""
+    name, so the log server does not have to guess any of them. The message
+    id is AUDIT for the audit log and the logger name for everything else."""
 
     def format(self, record):
         when = datetime.fromtimestamp(record.created, timezone.utc).isoformat(timespec='milliseconds')
-        return f'1 {when} flexblankett flexblankett {record.process} AUDIT - {record.getMessage()}'
+        text = record.getMessage()
+        if record.exc_info:
+            text += '\n' + self.formatException(record.exc_info)
+        msgid = 'AUDIT' if record.name == audit_log.name else record.name[:32]
+        line = f'1 {when} flexblankett flexblankett {record.process} {msgid} - {text}'
+        return line.encode()[:MAX_SYSLOG_BYTES].decode(errors='ignore')
 
 
 def _syslog_handler(target):
     """UDP syslog to host:port. UDP on purpose: nothing to connect, so a log
-    server that is down or slow can never hold up or break a login."""
+    server that is down or slow can never hold up or break a request."""
     host, _, port = target.rpartition(':')
     handler = logging.handlers.SysLogHandler(
         address=(host, int(port)),
@@ -161,21 +170,39 @@ def _syslog_handler(target):
     return handler
 
 
-def init_audit_log(syslog_target=''):
-    """Audit lines go to the container log (gone when the pod is replaced)
-    and, when AUDIT_SYSLOG is set, to a syslog server that keeps them."""
+def init_logging(syslog_target=''):
+    """Where the app's log lines go.
+
+    Always to the container log (lost when the pod is replaced). With
+    SYSLOG_TARGET set, also to that syslog server, which keeps them: the
+    audit log and everything the app itself logs (warnings and errors from
+    libraries included). gunicorn's own logs are sent there by gunicorn, see
+    GUNICORN_CMD_ARGS in k8s/ldap-config.yaml.
+    """
     if audit_log.handlers:
         return
-    handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter('%(asctime)s AUDIT %(message)s'))
-    audit_log.addHandler(handler)
+    console = logging.StreamHandler()
+    console.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))
+    audit_console = logging.StreamHandler()
+    audit_console.setFormatter(logging.Formatter('%(asctime)s AUDIT %(message)s'))
+
+    root = logging.getLogger()
+    root.addHandler(console)
+    root.setLevel(logging.WARNING)          # libraries: warnings and errors
+    logging.getLogger('app').setLevel(logging.INFO)
+
+    audit_log.addHandler(audit_console)
     audit_log.setLevel(logging.INFO)
     audit_log.propagate = False
+
     if syslog_target:
         try:
-            audit_log.addHandler(_syslog_handler(syslog_target))
+            syslog = _syslog_handler(syslog_target)
         except (OSError, ValueError):
             # Bad setting or the name does not resolve: say so and go on with
             # the container log only, rather than not starting.
-            log.exception('AUDIT_SYSLOG=%r not usable, audit log goes to the container log only',
+            log.exception('SYSLOG_TARGET=%r not usable, logs go to the container log only',
                           syslog_target)
+            return
+        root.addHandler(syslog)
+        audit_log.addHandler(syslog)
