@@ -159,7 +159,8 @@ The user lands on a "no employee profile" page. An admin must:
 minute), login attempts are counted per user name: 3 from the internet and 2
 from the LAN per 10 minutes, taken before the directory is asked and given
 back by a successful directory login. A local password is checked first and
-never reaches the directory. So at most 5 failures for a name reach IPA, which
+never reaches the directory; those checks have their own limit, 10 per name
+and 10 minutes. So at most 5 failures for a name reach IPA, which
 locks an account after 6 in a row, for every service. The price: somebody who
 knows a user name can keep that user out of *this app*, but only on the side
 they come from; the internet and the LAN have separate budgets.

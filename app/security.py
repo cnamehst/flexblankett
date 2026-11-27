@@ -43,6 +43,23 @@ def client_ip():
     return addr
 
 
+# Checks of a local password (admin / service accounts) never reach the
+# directory, so they have their own counter: enough for normal use, far too
+# few to guess a password. Counted for successes too, nothing is given back.
+LOCAL_PASSWORD_CHECKS = parse('10 per 10 minutes')
+
+
+def reserve_local_password_check(username):
+    """Take one local password check for this name; False when none is left.
+    Taken in one step before the password is compared."""
+    key = ('flexblankett', 'local-password-check', username.strip().lower()[:64])
+    try:
+        return _attempts().hit(LOCAL_PASSWORD_CHECKS, *key)
+    except Exception:
+        log.exception('login attempt counter unavailable')
+        return True
+
+
 def _zone():
     """'wan' for requests that came through a trusted (public) proxy, else 'lan'."""
     return 'wan' if (request.remote_addr or '') in current_app.config['TRUSTED_PROXIES'] else 'lan'

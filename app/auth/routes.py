@@ -5,7 +5,8 @@ from app.auth import bp
 from app.models import User
 from app import db, limiter
 from app.security import (
-    audit, directory_login_succeeded, login_attempts_left, reserve_login_attempt,
+    audit, directory_login_succeeded, login_attempts_left, reserve_local_password_check,
+    reserve_login_attempt,
 )
 
 
@@ -70,10 +71,15 @@ def login():
         # failures for this name may have reached the directory, and only a
         # successful bind there resets its count.
         user = User.query.filter_by(username=username).first()
-        if user and user.active and user.check_password(password):
-            login_user(user, remember=remember)
-            audit('login_ok', username=username, method='local')
-            return redirect(_safe_next())
+        if user and user.active and user.has_local_password:
+            # Counted in one step before the comparison, so that requests at
+            # the same moment cannot get more guesses than the limit.
+            if not reserve_local_password_check(username):
+                return _throttled(username)
+            if user.check_password(password):
+                login_user(user, remember=remember)
+                audit('login_ok', username=username, method='local')
+                return redirect(_safe_next())
 
         # Everything below may send a bind to the directory, so the attempt
         # is taken first, in one step (see app.security).

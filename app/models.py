@@ -34,6 +34,10 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
     @property
+    def has_local_password(self):
+        return self.password_hash != '!ldap'
+
+    @property
     def is_admin(self):
         return self.role == 'admin'
 

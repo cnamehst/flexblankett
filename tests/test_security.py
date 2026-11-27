@@ -184,6 +184,24 @@ def test_local_success_does_not_give_attempts_back(app, monkeypatch):
     assert len(binds) == 2      # the LAN budget, no more
 
 
+def test_local_password_checks_are_limited_per_name(app, monkeypatch):
+    """Even if the directory budget were never used up (requests at the same
+    moment), a local password is compared at most 10 times in 10 minutes."""
+    from app.auth import routes
+    from app.models import User as U
+    monkeypatch.setattr(routes, 'login_attempts_left', lambda u: True)
+    monkeypatch.setattr(routes, 'reserve_login_attempt', lambda u: False)
+    checks = []
+    real = U.check_password
+    monkeypatch.setattr(U, 'check_password',
+                        lambda self, pw: checks.append(pw) or real(self, pw))
+    client = app.test_client()
+    for i in range(15):
+        login(client, 'anna', 'wrong', addr=lan(i))
+    assert len(checks) == 10
+    assert login(client, 'anna', 'right', addr=lan(99)).status_code == 200   # refused
+
+
 def test_attempt_is_taken_before_the_password_check(app, monkeypatch):
     """Requests at the same moment must not all slip past the limit: the
     attempt is counted when the request starts, not after the check."""
