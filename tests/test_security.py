@@ -265,6 +265,46 @@ def test_login_and_logout_are_logged_with_the_client_address(app, audit_lines):
     assert any(line.startswith("logout actor='bo'") for line in audit_lines)
 
 
+def test_syslog_message_is_rfc5424_with_utc_time_and_program_name():
+    from app.security import _Rfc5424
+    record = logging.LogRecord('flexblankett.audit', logging.INFO, __file__, 1,
+                               '%s actor=%r', ('login_ok', 'bo'), None)
+    record.created = 1795780000.5
+    text = _Rfc5424().format(record)
+    assert text.startswith('1 2026-11-27T')
+    assert '+00:00 flexblankett flexblankett ' in text
+    assert text.endswith("AUDIT - login_ok actor='bo'")
+
+
+def test_audit_lines_are_sent_as_one_udp_datagram_each():
+    import socket
+    from app.security import _syslog_handler
+    receiver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    receiver.bind(('127.0.0.1', 0))
+    receiver.settimeout(2)
+    handler = _syslog_handler(f'127.0.0.1:{receiver.getsockname()[1]}')
+    try:
+        handler.emit(logging.LogRecord('flexblankett.audit', logging.INFO, __file__, 1,
+                                       'login_failed username=%r', ('x\ny',), None))
+        data = receiver.recv(4096).decode()
+    finally:
+        handler.close()
+        receiver.close()
+    assert data.startswith('<38>1 ')            # facility auth, severity info
+    assert data.endswith("login_failed username='x\\ny'")
+    assert '\n' not in data and '\x00' not in data
+
+
+def test_unusable_syslog_setting_does_not_stop_the_app(monkeypatch):
+    from app import security
+    monkeypatch.setattr(security.audit_log, 'handlers', [])
+    security.init_audit_log('no-port-here')
+    assert len(security.audit_log.handlers) == 1     # container log only
+    monkeypatch.setattr(security.audit_log, 'handlers', [])
+    security.init_audit_log('name.that.does.not.exist.invalid:514')
+    assert len(security.audit_log.handlers) >= 1
+
+
 def test_typed_text_cannot_add_log_lines(app, audit_lines):
     login(app.test_client(), 'x\nlogin_ok actor=admin', 'wrong')
     assert all('\n' not in line for line in audit_lines)

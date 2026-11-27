@@ -1,5 +1,8 @@
 """Client address behind the proxies, login throttling per user name, audit log."""
 import logging
+import logging.handlers
+import socket
+from datetime import datetime, timezone
 
 from flask import current_app, has_request_context, request
 from flask_login import current_user
@@ -135,7 +138,32 @@ def audit(event, **fields):
     audit_log.info('%s actor=%r ip=%s %s', event, actor, ip, details)
 
 
-def init_audit_log():
+class _Rfc5424(logging.Formatter):
+    """Syslog message with its own time (UTC, with offset), host and program
+    name, so the log server does not have to guess any of them."""
+
+    def format(self, record):
+        when = datetime.fromtimestamp(record.created, timezone.utc).isoformat(timespec='milliseconds')
+        return f'1 {when} flexblankett flexblankett {record.process} AUDIT - {record.getMessage()}'
+
+
+def _syslog_handler(target):
+    """UDP syslog to host:port. UDP on purpose: nothing to connect, so a log
+    server that is down or slow can never hold up or break a login."""
+    host, _, port = target.rpartition(':')
+    handler = logging.handlers.SysLogHandler(
+        address=(host, int(port)),
+        facility=logging.handlers.SysLogHandler.LOG_AUTH,
+        socktype=socket.SOCK_DGRAM,
+    )
+    handler.append_nul = False
+    handler.setFormatter(_Rfc5424())
+    return handler
+
+
+def init_audit_log(syslog_target=''):
+    """Audit lines go to the container log (gone when the pod is replaced)
+    and, when AUDIT_SYSLOG is set, to a syslog server that keeps them."""
     if audit_log.handlers:
         return
     handler = logging.StreamHandler()
@@ -143,3 +171,11 @@ def init_audit_log():
     audit_log.addHandler(handler)
     audit_log.setLevel(logging.INFO)
     audit_log.propagate = False
+    if syslog_target:
+        try:
+            audit_log.addHandler(_syslog_handler(syslog_target))
+        except (OSError, ValueError):
+            # Bad setting or the name does not resolve: say so and go on with
+            # the container log only, rather than not starting.
+            log.exception('AUDIT_SYSLOG=%r not usable, audit log goes to the container log only',
+                          syslog_target)

@@ -170,8 +170,11 @@ reverse proxies in front of Traefik. Traefik must trust the same addresses for
 `X-Forwarded-For`; otherwise every internet client looks like the proxy and
 they all share one rate-limit bucket.
 
-**Audit log.** Lines starting with a timestamp and `AUDIT` in the container
-log: `login_ok`, `login_failed`, `login_throttled`, `login_denied`, `logout`,
+**Audit log.** Sent to the syslog server in `AUDIT_SYSLOG` (ConfigMap
+`flexblankett-ldap`; here Graylog on docker2, UDP 514), where it is kept; in
+Graylog search for `source:flexblankett`. The same lines, starting with a
+timestamp and `AUDIT`, are in the container log, which is lost whenever the
+pod is replaced. Events: `login_ok`, `login_failed`, `login_throttled`, `login_denied`, `logout`,
 `admin_denied`, `user_created`, `user_edited` (what changed, never the
 password), `user_deleted`, `api_key_created`, `api_key_revoked`,
 `api_key_rejected`. Each has the acting user and the client address. A user name typed at a
@@ -182,7 +185,7 @@ kubectl logs -n flexblankett deploy/flexblankett --all-containers --prefix | gre
 ```
 
 **Network policy.** `k8s/networkpolicy.yaml` closes the namespace and opens
-only Traefik in, and DNS, database, LDAPS and redis out. Not part of the
+only Traefik in, and DNS, database, LDAPS, redis and syslog out. Not part of the
 numbered deployment steps; apply it separately and check login afterwards.
 
 ## Schema migrations

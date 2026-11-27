@@ -16,6 +16,9 @@ data:
   # must trust the same address (forwardedHeaders.trustedIPs, set by Puppet),
   # otherwise every internet client still looks like jarvis.
   TRUSTED_PROXIES: "192.168.203.9"
+  # Audit log (logins, admin changes, API keys) to Graylog, syslog over UDP.
+  # The container log loses it whenever the pod is replaced.
+  AUDIT_SYSLOG: "docker2.cname.se:514"
 ---
 apiVersion: v1
 kind: ConfigMap

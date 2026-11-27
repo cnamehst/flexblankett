@@ -36,7 +36,7 @@ def create_app():
     limiter.init_app(app)
 
     from app.security import init_audit_log
-    init_audit_log()
+    init_audit_log(app.config['AUDIT_SYSLOG'])
 
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Logga in för att fortsätta.'

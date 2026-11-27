@@ -49,6 +49,10 @@ class Config:
         a.strip() for a in os.environ.get('TRUSTED_PROXIES', '').split(',') if a.strip()
     )
 
+    # host:port of a syslog server (UDP) that keeps the audit log. Empty: the
+    # audit log only goes to the container log.
+    AUDIT_SYSLOG = os.environ.get('AUDIT_SYSLOG', '')
+
     LDAP_ENABLED = os.environ.get('LDAP_ENABLED', 'false').lower() == 'true'
     LDAP_HOST = os.environ.get('LDAP_HOST', 'idm.cname.se')
     LDAP_BASE_DN = os.environ.get('LDAP_BASE_DN', 'dc=cname,dc=se')
