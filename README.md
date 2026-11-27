@@ -160,7 +160,9 @@ minute), failed logins are counted per user name: after 4 failures in 10
 minutes the app stops asking the directory for that name until the window has
 passed. This keeps the login form from being used to lock an IPA account (IPA
 locks after 6 failures in a row, for every service). The price: somebody who
-knows a user name can keep that user out of *this app*.
+knows a user name can keep that user out of *this app*, but only on the
+side they come from: failures from the internet and from the LAN are counted
+separately.
 
 **Client address.** `TRUSTED_PROXIES` (ConfigMap `flexblankett-ldap`) lists
 reverse proxies in front of Traefik. Traefik must trust the same addresses for
@@ -171,7 +173,8 @@ they all share one rate-limit bucket.
 log: `login_ok`, `login_failed`, `login_throttled`, `login_denied`, `logout`,
 `admin_denied`, `user_created`, `user_edited` (what changed, never the
 password), `user_deleted`, `api_key_created`, `api_key_revoked`,
-`api_key_rejected`. Each has the acting user and the client address.
+`api_key_rejected`. Each has the acting user and the client address. A user name typed at a
+failed login is only logged if it is an account in the app.
 
 ```bash
 kubectl logs -n flexblankett deploy/flexblankett --all-containers --prefix | grep AUDIT

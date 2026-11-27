@@ -22,6 +22,17 @@ def _try_ldap(username, password):
     )
 
 
+def _name_for_log(username):
+    """The typed user name if it is an account here, else a placeholder.
+
+    People sometimes type their password in the user name field; text that
+    is not a known account must not end up in the log.
+    """
+    if username and User.query.filter_by(username=username).first():
+        return username
+    return '<not an account here>'
+
+
 def _safe_next():
     next_url = request.args.get('next', '')
     # Only same-site absolute paths; reject //host and backslash tricks
@@ -45,7 +56,7 @@ def login():
 
         # Checked before the directory is asked, see app.security.
         if username and login_blocked(username):
-            audit('login_throttled', username=username)
+            audit('login_throttled', username=_name_for_log(username))
             flash('För många misslyckade försök. Vänta 10 minuter och försök igen.', 'danger')
             return render_template('auth/login.html')
 
@@ -74,7 +85,7 @@ def login():
 
         if username:
             record_login_failure(username)
-        audit('login_failed', username=username)
+        audit('login_failed', username=_name_for_log(username))
         flash('Felaktigt användarnamn eller lösenord.', 'danger')
 
     return render_template('auth/login.html')

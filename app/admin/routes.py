@@ -116,7 +116,9 @@ def edit_user(user_id):
         user.employee.base_year = int(request.form.get('base_year', 2026) or 2026)
 
         db.session.commit()
-        changed = {k: [before[k], after[k]] for k in before if before[k] != after[k]}
+        # E-mail addresses are personal data: say that it changed, not to what.
+        changed = {k: ('changed' if k == 'email' else [before[k], after[k]])
+                   for k in before if before[k] != after[k]}
         audit('user_edited', user_id=user.id, username=user.username,
               changed=changed, password_set=bool(password))
         flash('Sparat.', 'success')

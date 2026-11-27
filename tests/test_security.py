@@ -115,6 +115,15 @@ def test_other_user_is_not_affected(app):
     assert login(client, 'bo', 'right', addr='10.0.2.9').status_code == 302
 
 
+def test_failures_from_the_internet_do_not_block_the_lan(app):
+    client = app.test_client()
+    for i in range(4):
+        login(client, 'anna', 'wrong', addr=f'203.0.113.{i}, {PROXY}')
+    blocked = login(client, 'anna', 'right', addr=f'203.0.113.99, {PROXY}')
+    assert 'För många' in blocked.get_data(as_text=True)
+    assert login(client, 'anna', 'right', addr='192.168.1.50').status_code == 302
+
+
 def test_three_failures_then_success(app):
     client = app.test_client()
     for i in range(3):
@@ -136,6 +145,31 @@ def test_login_and_logout_are_logged_with_the_client_address(app, audit_lines):
 def test_typed_text_cannot_add_log_lines(app, audit_lines):
     login(app.test_client(), 'x\nlogin_ok actor=admin', 'wrong')
     assert all('\n' not in line for line in audit_lines)
+
+
+def test_text_that_is_not_an_account_is_not_logged(app, audit_lines):
+    # A password typed in the user name field.
+    client = app.test_client()
+    for i in range(5):
+        login(client, 'MyPassw0rd', 'x', addr=f'10.0.4.{i}')
+    text = '\n'.join(audit_lines)
+    assert 'MyPassw0rd' not in text
+    assert 'login_failed' in text and 'login_throttled' in text
+
+
+def test_changed_email_is_logged_without_the_address(app, audit_lines):
+    with app.app_context():
+        admin = User(username='root', email='root@example.com', role='admin')
+        admin.set_password('right')
+        db.session.add(admin)
+        db.session.commit()
+    client = app.test_client()
+    login(client, 'root', 'right')
+    client.post('/admin/users/1/edit', data={
+        'username': 'anna', 'email': 'new@example.org', 'role': 'user',
+        'active': '1', 'name': 'Anna'})
+    text = '\n'.join(audit_lines)
+    assert "'email': 'changed'" in text and 'new@example.org' not in text
 
 
 def test_password_is_never_logged(app, audit_lines):

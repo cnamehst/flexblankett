@@ -38,8 +38,17 @@ def client_ip():
     return addr
 
 
+def _zone():
+    """'wan' for requests that came through a trusted (public) proxy, else 'lan'."""
+    return 'wan' if (request.remote_addr or '') in current_app.config['TRUSTED_PROXIES'] else 'lan'
+
+
 def _failure_key(username):
-    return ('flexblankett', 'login-failure', username.strip().lower()[:64])
+    # Counted separately for the internet and the LAN: somebody on the
+    # internet who knows a user name can then keep that user out from the
+    # internet only, not from the LAN. Towards the directory the internet
+    # side alone still stays below the lock threshold.
+    return ('flexblankett', 'login-failure', _zone(), username.strip().lower()[:64])
 
 
 def _failures():
