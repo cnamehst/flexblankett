@@ -15,6 +15,9 @@ audit_log = logging.getLogger('flexblankett.audit')
 # cannot be used to lock somebody's account: after 4 failures for a user name
 # the app stops asking the directory for 10 minutes.
 LOGIN_FAILURE_LIMIT = parse('4 per 10 minutes')
+# Internet and LAN are counted separately (see _failure_keys), so on top of
+# that the two together are capped at 5: never 6 failures for one name.
+LOGIN_FAILURE_TOTAL = parse('5 per 10 minutes')
 
 
 def client_ip():
@@ -43,12 +46,20 @@ def _zone():
     return 'wan' if (request.remote_addr or '') in current_app.config['TRUSTED_PROXIES'] else 'lan'
 
 
-def _failure_key(username):
-    # Counted separately for the internet and the LAN: somebody on the
-    # internet who knows a user name can then keep that user out from the
-    # internet only, not from the LAN. Towards the directory the internet
-    # side alone still stays below the lock threshold.
-    return ('flexblankett', 'login-failure', _zone(), username.strip().lower()[:64])
+def _failure_keys(username):
+    """(limit, key) pairs that a failed login for this name counts against.
+
+    Per side, internet or LAN: somebody on the internet who knows a user name
+    can use up the internet side (4) but not the LAN side, so the user still
+    gets in from the LAN with the right password. And the two sides together
+    (5), so that what reaches the directory stays below its lock threshold
+    whatever the mix.
+    """
+    name = username.strip().lower()[:64]
+    return (
+        (LOGIN_FAILURE_LIMIT, ('flexblankett', 'login-failure', _zone(), name)),
+        (LOGIN_FAILURE_TOTAL, ('flexblankett', 'login-failure', 'total', name)),
+    )
 
 
 def _failures():
@@ -59,7 +70,8 @@ def _failures():
 def login_blocked(username):
     """True when this user name has used up its failed logins."""
     try:
-        return not _failures().test(LOGIN_FAILURE_LIMIT, *_failure_key(username))
+        counter = _failures()
+        return not all(counter.test(limit, *key) for limit, key in _failure_keys(username))
     except Exception:
         # Counter store unreachable: let the login through, the limit per
         # address still applies.
@@ -69,7 +81,9 @@ def login_blocked(username):
 
 def record_login_failure(username):
     try:
-        _failures().hit(LOGIN_FAILURE_LIMIT, *_failure_key(username))
+        counter = _failures()
+        for limit, key in _failure_keys(username):
+            counter.hit(limit, *key)
     except Exception:
         log.exception('login failure counter unavailable')
 

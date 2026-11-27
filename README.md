@@ -162,7 +162,8 @@ passed. This keeps the login form from being used to lock an IPA account (IPA
 locks after 6 failures in a row, for every service). The price: somebody who
 knows a user name can keep that user out of *this app*, but only on the
 side they come from: failures from the internet and from the LAN are counted
-separately.
+separately (4 each), with a cap of 5 for the two together so that IPA's
+threshold is never reached.
 
 **Client address.** `TRUSTED_PROXIES` (ConfigMap `flexblankett-ldap`) lists
 reverse proxies in front of Traefik. Traefik must trust the same addresses for

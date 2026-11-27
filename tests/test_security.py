@@ -124,6 +124,19 @@ def test_failures_from_the_internet_do_not_block_the_lan(app):
     assert login(client, 'anna', 'right', addr='192.168.1.50').status_code == 302
 
 
+def test_both_sides_together_stay_below_the_directory_lock(app, audit_lines):
+    client = app.test_client()
+    for i in range(4):                                   # internet side used up
+        login(client, 'anna', 'wrong', addr=f'203.0.113.{i}, {PROXY}')
+    login(client, 'anna', 'wrong', addr='192.168.1.50')  # one more from the LAN: 5
+    for i in range(3):                                   # refused on both sides now
+        login(client, 'anna', 'wrong', addr=f'192.168.1.{60 + i}')
+        login(client, 'anna', 'wrong', addr=f'203.0.113.{60 + i}, {PROXY}')
+    # Only five attempts got as far as a password check.
+    assert sum(line.startswith('login_failed') for line in audit_lines) == 5
+    assert sum(line.startswith('login_throttled') for line in audit_lines) == 6
+
+
 def test_three_failures_then_success(app):
     client = app.test_client()
     for i in range(3):
